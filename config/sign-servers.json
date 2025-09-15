@@ -1,0 +1,52 @@
+{
+    "signServerList": [
+      {
+        "name": "抱脸#签名",
+        "url": "https://zyr15r-astralqsign.hf.space?key=X"
+      },
+      {
+        "name": "赵怡然#签名1",
+        "url": "https://qsign.trpgbot.com?key=miraibbs"
+      },
+      {
+        "name": "赵怡然#签名2",
+        "url": "http://qsign-v3.trpgbot.com?key=miraibbs"
+      },
+      {
+        "name": "赵怡然#签名3",
+        "url": "https://qsign.chahuyun.cn?key=miraibbs"
+      },
+      {
+        "name": "赵怡然#签名4",
+        "url": "http://chahuyun.cn:18888?key=miraibbs"
+      },
+      {
+        "name": "赵怡然#签名5",
+        "url": "https://qsign.shigu.cc?key=miraibbs"
+      },
+      {
+        "name": "赵怡然#签名6",
+        "url": "http://49.232.201.10?key=miraibbs"
+      },
+      {
+        "name": "赵怡然#签名7",
+        "url": "http://45.207.209.159:3000?key=miraibbs"
+      },
+      {
+        "name": "赵怡然#签名8",
+        "url": "http://183.131.51.152:7860?key=miraibbs"
+      },
+      {
+        "name": "坏叔叔的签名1",
+        "url": "http://api.furinaa.net/?key=0852369"
+      },
+      {
+        "name": "坏叔叔的签名2",
+        "url": "http://110.40.45.169:7890/?key=0852369"
+      },
+      {
+        "name": "雾里#签名",
+        "url": "https://q-sign.wuliya.cn?key=114514"
+      }
+    ]
+}

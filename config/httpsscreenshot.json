@@ -1,0 +1,90 @@
+{
+  "blacklistDomains": [
+    "bilibili.com", "douyin.com", "tiktok.com",
+    "twitter.com", "facebook.com", "instagram.com",
+    "weibo.com", "xiaohongshu.com",
+    "porn", "adult", "xxx", "sex",
+    "hentai", "nsfw", "dating",
+    "gambling", "bet", "casino", "lottery", "gamble",
+    "ad.", "ads.", "track.", "analytics.",
+    "click.", "pixel.", "stat.", "counter.",
+    "warez", "crack", "hack", "cheat",
+    "phish", "malware", "spam",  "vtr7yn.zprosq.com"
+  ],
+
+  "whitelistDomains": [
+    "github.com",
+    "gitee.com", 
+    "gitlab.com",
+    "stackoverflow.com",
+    "microsoft.com",
+    "google.com",
+    "npmjs.com",
+    "nodejs.org"
+  ],
+
+  "blacklistIPs": [
+    "0.0.0.0/8",
+    "10.0.0.0/8",
+    "100.64.0.0/10",
+    "127.0.0.0/8",
+    "169.254.0.0/16",
+    "172.16.0.0/12",
+    "192.0.0.0/24",
+    "192.0.2.0/24", 
+    "192.88.99.0/24",
+    "192.168.0.0/16",
+    "198.18.0.0/15",
+    "198.51.100.0/24",
+    "203.0.113.0/24",
+    "224.0.0.0/4",
+    "240.0.0.0/4",
+    "fc00::/7",
+    "fe80::/10",
+    "ff00::/8"
+  ],
+
+  "allowedLocalAddresses": [
+    "localhost",
+    "127.0.0.1"
+  ],
+
+  "blockedExtensions": {
+    "images": ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico"],
+    "media": ["mp4", "webm", "ogg", "mp3", "wav", "flv", "avi", "mov"],
+    "documents": ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods"],
+    "archives": ["zip", "rar", "7z", "tar", "gz", "bz2", "xz"],
+    "executables": ["exe", "msi", "apk", "ipa", "dmg", "pkg", "deb", "rpm"],
+    "code": ["js", "css", "py", "php", "bat", "cmd", "vbs"],
+    "fonts": ["ttf", "otf", "woff", "woff2", "eot"]
+  },
+
+  "urlProcessing": {
+    "maxUrlsPerMessage": 5,
+    "maxRedirects": 3,
+    "requestTimeout": 8000,
+    "minUrlLength": 4,
+    "maxUrlLength": 2083,
+    "maxRetries": 2,
+    "retryDelay": 1000
+  },
+
+  "filteredParams": [
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "fbclid", "gclid", "dclid", "zanpid", "mk_token",
+    "session_id", "sessionid", "sid", "token",
+    "ref", "source", "from", "platform"
+  ],
+
+  "screenshotConfig": {
+    "width": 1536,
+    "height": 2138,
+    "quality": 100,
+    "type": "jpeg",
+    "selector": null,
+    "waitForSelector": null, 
+    "waitForTimeout": null,
+    "waitUntil": "networkidle2",
+    "fullPage": true
+  }
+}

@@ -1,0 +1,14 @@
+!/resources
+/resources/**
+!/resources/weather/weather.json
+!/resources/help_other/*
+!/resources/help/*
+!/resources/plugins/*
+/resources/emoji/*
+/resources/voice/*
+
+/resources/help/status-data.json
+!/config
+!/config/system/help_system.js
+!/config/sign-servers.json
+!/config/ai-assistant/**
