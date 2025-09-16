@@ -28,7 +28,7 @@ let emotionImages = {};
 let config = null;
 let personas = {};
 
-// 表情包类型（添加生气）
+// 表情包类型
 const EMOTION_TYPES = ['开心', '惊讶', '伤心', '大笑', '害怕', '生气'];
 
 // 表情回应映射
@@ -215,9 +215,11 @@ export class XRKAIAssistant extends plugin {
     // 全局AI判断
     if (!e.isGroup) return false;
     
-    // 使用配置中的globalWhitelist
-    const globalWhitelist = config.ai?.globalWhitelist || [];
-    if (!globalWhitelist.includes(String(e.group_id))) {
+    // 使用配置中的globalWhitelist - 转换为数字进行比较
+    const globalWhitelist = (config.ai?.globalWhitelist || []).map(id => Number(id));
+    const groupIdNum = Number(e.group_id);
+    
+    if (!globalWhitelist.includes(groupIdNum)) {
       return false;
     }
     
@@ -280,15 +282,16 @@ export class XRKAIAssistant extends plugin {
     const response = await this.callAI(messages);
     
     if (!response) {
-      if (!isGlobalTrigger) {
-        const emotionImage = this.getRandomEmotionImage('伤心');
-        if (emotionImage) {
-          await e.reply(segment.image(emotionImage));
-          await e.reply('思考中断了，请稍后再试~');
-        } else {
-          await e.reply('思考中断了，请稍后再试~');
-        }
+      // 全局触发失败时不发送任何消息
+      if (isGlobalTrigger) {
+        return false;
       }
+      // 只有被主动触发时才回复错误
+      const emotionImage = this.getRandomEmotionImage('伤心');
+      if (emotionImage) {
+        await e.reply(segment.image(emotionImage));
+      }
+      await e.reply('思考中断了，请稍后再试~');
       return true;
     }
 
@@ -522,16 +525,17 @@ ${isGlobalTrigger ? '观察群聊后主动发言' : '被召唤回复'}
 【基础规则】
 1. 你是一个真实的QQ用户，不是AI助手
 2. 说话要自然、简洁、有个性
-3. 可以多次回复，用 | 符号分隔不同的消息
+3. 最多使用一个竖线分隔符(|)，也就是最多发送两条消息
 4. 每条消息不要太长，像正常聊天一样
 5. 适当使用表情包和互动功能
 
 【表情包系统】
-在文字中插入以下标记来发送表情包：
+在文字中插入以下标记来发送表情包（一次对话只能使用一个表情包）：
 [开心] [惊讶] [伤心] [大笑] [害怕] [生气]
+重要：每次回复最多只能使用一个表情包标记！
 
 【互动功能】
-[CQ:at,qq=QQ号] - @某人
+[CQ:at,qq=QQ号] - @某人（确保QQ号存在）
 [CQ:poke,qq=QQ号] - 戳一戳某人
 [CQ:reply,id=消息ID] - 回复某条消息
 [回应:消息ID:表情类型] - 给消息添加表情回应
@@ -543,9 +547,15 @@ ${botRole !== '成员' ? `[禁言:QQ号:秒数] - 禁言
 [公告:内容] - 发布群公告` : ''}
 [提醒:年-月-日 时:分:内容] - 设置定时提醒
 
+【重要限制】
+1. 每次回复最多只能发一个表情包
+2. 最多使用一个竖线(|)分隔，也就是最多两条消息
+3. @人之前要确认QQ号是否在群聊记录中出现过
+4. 不要重复使用相同的功能
+
 【注意事项】
 ${isGlobalTrigger ? '1. 主动发言要有新意，不要重复他人观点\n2. 可以随机戳一戳活跃的成员' : '1. 回复要针对性强，不要答非所问\n2. 被召唤时更要积极互动'}
-3. @人时确保QQ号真实存在
+3. @人时只使用出现在群聊记录中的QQ号
 4. 多使用戳一戳和表情回应来增加互动性
 ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
 
@@ -577,8 +587,11 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
 
   /** 处理AI响应 */
   async processAIResponse(e, response) {
-    // 使用竖线分割响应
-    const segments = response.split('|').map(s => s.trim()).filter(s => s);
+    // 使用竖线分割响应，最多两段
+    const segments = response.split('|').map(s => s.trim()).filter(s => s).slice(0, 2);
+    
+    // 统计总的表情包数量，确保只发一个
+    let emotionSent = false;
     
     for (let i = 0; i < segments.length; i++) {
       const responseSegment = segments[i];
@@ -586,14 +599,13 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
       // 解析当前段落
       const { textParts, emotions, functions } = this.parseResponseSegment(responseSegment);
       
-      // 先发送表情包
-      for (const emotion of emotions) {
-        const emotionImage = this.getRandomEmotionImage(emotion);
+      // 只发送第一个表情包
+      if (!emotionSent && emotions.length > 0) {
+        const emotionImage = this.getRandomEmotionImage(emotions[0]);
         if (emotionImage) {
           await e.reply(segment.image(emotionImage));
-          if (textParts.length > 0 || emotions.indexOf(emotion) < emotions.length - 1) {
-            await Bot.sleep(300);
-          }
+          emotionSent = true;
+          await Bot.sleep(300);
         }
       }
       
@@ -650,13 +662,13 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
       }
     });
     
-    // 提取表情包（包括生气）
+    // 提取表情包（只提取第一个）
     const emotionRegex = /\[(开心|惊讶|伤心|大笑|害怕|生气)\]/g;
-    let emotionMatch;
-    while ((emotionMatch = emotionRegex.exec(cleanedSegment))) {
+    let emotionMatch = emotionRegex.exec(cleanedSegment);
+    if (emotionMatch) {
       emotions.push(emotionMatch[1]);
+      cleanedSegment = cleanedSegment.replace(emotionRegex, '');
     }
-    cleanedSegment = cleanedSegment.replace(emotionRegex, '');
     
     // 剩余的文本内容
     if (cleanedSegment.trim()) {
@@ -703,12 +715,17 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
     switch (type) {
       case 'at':
         if (e.isGroup && paramObj.qq) {
-          try {
-            const member = e.group.pickMember(paramObj.qq);
-            await member.getInfo();
-            return segment.at(paramObj.qq);
-          } catch {
-            return null;
+          const history = messageHistory.get(e.group_id) || [];
+          const userExists = history.some(msg => String(msg.user_id) === String(paramObj.qq));
+          
+          if (userExists) {
+            try {
+              const member = e.group.pickMember(paramObj.qq);
+              await member.getInfo();
+              return segment.at(paramObj.qq);
+            } catch {
+              return null;
+            }
           }
         }
         return null;
@@ -968,7 +985,8 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
     if (!cfg.ai) cfg.ai = {};
     if (!cfg.ai.globalWhitelist) cfg.ai.globalWhitelist = [];
     
-    const gid = String(groupId);
+    // 保存为数字
+    const gid = Number(groupId);
     if (!cfg.ai.globalWhitelist.includes(gid)) {
       cfg.ai.globalWhitelist.push(gid);
       await 保存yaml(path.join(_path, 'data/xrkconfig/config.yaml'), cfg);
@@ -994,7 +1012,7 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
     
     const cfg = 解析向日葵插件yaml();
     if (cfg.ai?.globalWhitelist) {
-      const gid = String(groupId);
+      const gid = Number(groupId);
       cfg.ai.globalWhitelist = cfg.ai.globalWhitelist.filter(g => g !== gid);
       await 保存yaml(path.join(_path, 'data/xrkconfig/config.yaml'), cfg);
       config = cfg;

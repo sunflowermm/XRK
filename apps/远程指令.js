@@ -13,10 +13,11 @@ import stream from 'stream';
 import os from 'os';
 import events from 'events';
 import readline from 'readline';
+import vm from 'vm';
+import util from 'util';
 import common from '../../../lib/common/common.js';
 import cfg from '../../../lib/config/config.js';
 import { 制作聊天记录 } from '../../../lib/util.js';
-import util from 'util';
 
 const ROOT_PATH = process.cwd();
 
@@ -54,6 +55,8 @@ class ToolsConfig {
           circularDetection: true,
           printMode: 'full',
           saveChunkedOutput: true,
+          jsExecutionMode: 'safe', // safe, enhanced, sandbox
+          jsTimeout: 10000,
         };
         this.saveConfig();
       }
@@ -842,17 +845,27 @@ class ObjectInspector {
 }
 
 /**
- * JavaScript执行器
+ * 增强的JavaScript执行器
  */
 class JavaScriptExecutor {
   constructor() {
     this.maxOutputLength = 5000;
+    this.executionMode = 'safe'; // safe, enhanced, sandbox
+  }
+
+  /**
+   * 设置执行模式
+   */
+  setMode(mode) {
+    if (['safe', 'enhanced', 'sandbox'].includes(mode)) {
+      this.executionMode = mode;
+    }
   }
 
   /**
    * 格式化执行结果为字符串
    */
-  formatResult(result) {
+  formatResult(result, depth = 0, seen = new WeakSet()) {
     if (result === undefined) return 'undefined';
     if (result === null) return 'null';
     
@@ -874,9 +887,50 @@ class JavaScriptExecutor {
     
     // 对象类型
     if (typeof result === 'object') {
+      // 防止循环引用
+      if (seen.has(result)) {
+        return '[Circular Reference]';
+      }
+      seen.add(result);
+
+      // 特殊对象处理
+      if (result instanceof Promise) {
+        return '[Promise]';
+      }
+      if (result instanceof Error) {
+        return `${result.name}: ${result.message}\n${result.stack}`;
+      }
+      if (result instanceof Date) {
+        return result.toISOString();
+      }
+      if (result instanceof RegExp) {
+        return result.toString();
+      }
+      if (Buffer.isBuffer(result)) {
+        return `Buffer(${result.length}): ${result.toString('hex').substring(0, 100)}...`;
+      }
+      if (result instanceof Map) {
+        const entries = Array.from(result.entries()).slice(0, 10);
+        return `Map(${result.size}) { ${entries.map(([k, v]) => 
+          `${this.formatResult(k, depth + 1, seen)} => ${this.formatResult(v, depth + 1, seen)}`
+        ).join(', ')}${result.size > 10 ? ', ...' : ''} }`;
+      }
+      if (result instanceof Set) {
+        const values = Array.from(result).slice(0, 10);
+        return `Set(${result.size}) { ${values.map(v => 
+          this.formatResult(v, depth + 1, seen)
+        ).join(', ')}${result.size > 10 ? ', ...' : ''} }`;
+      }
+
       try {
         // 尝试使用 JSON.stringify
-        const jsonStr = JSON.stringify(result, null, 2);
+        const jsonStr = JSON.stringify(result, (key, value) => {
+          if (typeof value === 'bigint') return value.toString() + 'n';
+          if (typeof value === 'function') return '[Function]';
+          if (typeof value === 'symbol') return value.toString();
+          return value;
+        }, 2);
+        
         if (jsonStr.length > this.maxOutputLength) {
           return jsonStr.substring(0, this.maxOutputLength - 3) + '...';
         }
@@ -889,7 +943,10 @@ class JavaScriptExecutor {
             colors: false, 
             maxArrayLength: 100,
             breakLength: 80,
-            compact: false 
+            compact: false,
+            getters: true,
+            showHidden: false,
+            customInspect: true
           });
           if (inspectStr.length > this.maxOutputLength) {
             return inspectStr.substring(0, this.maxOutputLength - 3) + '...';
@@ -906,44 +963,210 @@ class JavaScriptExecutor {
   }
 
   /**
-   * 执行JavaScript代码
+   * 检测代码类型和特性
    */
-  async execute(code, globalContext) {
-    const startTime = Date.now();
+  analyzeCode(code) {
+    const features = {
+      isExpression: false,
+      isAsync: false,
+      hasAwait: false,
+      hasReturn: false,
+      hasImport: false,
+      hasExport: false,
+      hasClass: false,
+      hasFunction: false,
+      isMultiline: false,
+      isStatement: false
+    };
+
+    features.isMultiline = code.includes('\n') || code.includes(';');
+    features.hasAwait = /\bawait\s+/.test(code);
+    features.hasReturn = /\breturn\s+/.test(code);
+    features.hasImport = /\bimport\s+/.test(code);
+    features.hasExport = /\bexport\s+/.test(code);
+    features.hasClass = /\bclass\s+\w+/.test(code);
+    features.hasFunction = /\b(function|async\s+function|const\s+\w+\s*=\s*async|\w+\s*:\s*async)/.test(code);
+    features.isAsync = features.hasAwait || /\basync\s+/.test(code);
+
+    // 判断是否为表达式
+    try {
+      new Function(`return (${code})`);
+      features.isExpression = true;
+    } catch {
+      features.isExpression = false;
+      features.isStatement = true;
+    }
+
+    return features;
+  }
+
+  /**
+   * 执行JavaScript代码 - 安全模式
+   */
+  async executeSafe(code, globalContext) {
+    const features = this.analyzeCode(code);
+    const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+    const contextKeys = Object.keys(globalContext);
+    const contextValues = contextKeys.map((key) => globalContext[key]);
+    
+    let result;
+    
+    // 根据代码特性选择执行策略
+    if (features.hasImport || features.hasExport) {
+      throw new Error('Safe mode does not support import/export statements. Use enhanced mode instead.');
+    }
+
+    // 优先尝试表达式模式
+    if (features.isExpression && !features.isMultiline) {
+      try {
+        const exprFunction = features.isAsync || features.hasAwait
+          ? new AsyncFunction(...contextKeys, `return (${code});`)
+          : new Function(...contextKeys, `return (${code});`);
+        result = await exprFunction(...contextValues);
+        return result;
+      } catch (error) {
+        if (!error.message.includes('Unexpected token')) {
+          throw error;
+        }
+      }
+    }
+
+    // 语句模式执行
+    try {
+      let wrappedCode = code;
+      
+      // 处理顶层await
+      if (features.hasAwait && !features.hasFunction) {
+        wrappedCode = `(async () => { ${code} })()`;
+      }
+      
+      const stmtFunction = new AsyncFunction(...contextKeys, wrappedCode);
+      result = await stmtFunction(...contextValues);
+    } catch (error) {
+      // 如果是返回值问题，尝试包装执行
+      if (error.message.includes('return') || error.message.includes('await')) {
+        try {
+          const wrappedFunction = new AsyncFunction(...contextKeys, 
+            `return (async function() {
+              ${code}
+            })();`
+          );
+          result = await wrappedFunction(...contextValues);
+        } catch (wrapError) {
+          throw wrapError;
+        }
+      } else {
+        throw error;
+      }
+    }
+    
+    return result;
+  }
+
+  /**
+   * 执行JavaScript代码 - 增强模式
+   */
+  async executeEnhanced(code, globalContext) {
+    const features = this.analyzeCode(code);
+    
+    // 创建一个更宽松的执行环境
+    const script = new vm.Script(`
+      (async function() {
+        ${code}
+      })()
+    `);
+    
+    const sandbox = {
+      ...globalContext,
+      console,
+      require,
+      process,
+      global,
+      Buffer,
+      setTimeout,
+      setInterval,
+      clearTimeout,
+      clearInterval,
+      Promise,
+      __dirname: ROOT_PATH,
+      __filename: configFile
+    };
+    
+    const context = vm.createContext(sandbox);
     
     try {
-      const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
-      const contextKeys = Object.keys(globalContext);
-      const contextValues = contextKeys.map((key) => globalContext[key]);
-      
+      const result = await script.runInContext(context, {
+        timeout: config.get('jsTimeout', 10000),
+        displayErrors: true
+      });
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * 执行JavaScript代码 - 沙箱模式
+   */
+  async executeSandbox(code, globalContext) {
+    // 创建受限的沙箱环境
+    const limitedContext = {
+      console: {
+        log: (...args) => args.join(' '),
+        error: (...args) => args.join(' '),
+        warn: (...args) => args.join(' '),
+        info: (...args) => args.join(' ')
+      },
+      Math,
+      Date,
+      JSON,
+      Array,
+      Object,
+      String,
+      Number,
+      Boolean,
+      RegExp,
+      // 只提供必要的全局对象
+      e: globalContext.e,
+      Bot: globalContext.Bot,
+      segment: globalContext.segment
+    };
+    
+    const script = new vm.Script(code);
+    const context = vm.createContext(limitedContext);
+    
+    try {
+      const result = script.runInContext(context, {
+        timeout: 5000,
+        displayErrors: true
+      });
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * 执行JavaScript代码
+   */
+  async execute(code, globalContext, mode = null) {
+    const startTime = Date.now();
+    const execMode = mode || config.get('jsExecutionMode', 'safe');
+    
+    try {
       let result;
       
-      // 首先尝试作为表达式执行
-      try {
-        const exprFunction = new AsyncFunction(...contextKeys, `return (${code});`);
-        result = await exprFunction(...contextValues);
-      } catch (exprError) {
-        // 如果失败，尝试作为语句执行
-        if (exprError instanceof SyntaxError) {
-          try {
-            const stmtFunction = new AsyncFunction(...contextKeys, code);
-            result = await stmtFunction(...contextValues);
-          } catch (stmtError) {
-            // 如果还是失败，尝试包装在异步函数中
-            if (stmtError instanceof SyntaxError) {
-              const wrappedFunction = new AsyncFunction(...contextKeys,
-                `return (async function() {
-                  ${code}
-                })();`
-              );
-              result = await wrappedFunction(...contextValues);
-            } else {
-              throw stmtError;
-            }
-          }
-        } else {
-          throw exprError;
-        }
+      switch (execMode) {
+        case 'enhanced':
+          result = await this.executeEnhanced(code, globalContext);
+          break;
+        case 'sandbox':
+          result = await this.executeSandbox(code, globalContext);
+          break;
+        case 'safe':
+        default:
+          result = await this.executeSafe(code, globalContext);
+          break;
       }
       
       const executionTime = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -954,7 +1177,8 @@ class JavaScriptExecutor {
         executionTime: executionTime,
         resultType: typeof result === 'object' && result !== null ? 
           result.constructor?.name || 'Object' : 
-          typeof result
+          typeof result,
+        mode: execMode
       };
     } catch (error) {
       const executionTime = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -963,9 +1187,38 @@ class JavaScriptExecutor {
         success: false,
         error: error.message,
         stack: error.stack,
-        executionTime: executionTime
+        executionTime: executionTime,
+        mode: execMode
       };
     }
+  }
+
+  /**
+   * 评估表达式（快速计算）
+   */
+  async evaluate(expression, globalContext = {}) {
+    try {
+      // 简单表达式直接计算
+      const func = new Function(...Object.keys(globalContext), `return ${expression}`);
+      const result = func(...Object.values(globalContext));
+      return {
+        success: true,
+        result: result,
+        type: typeof result
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * 异步执行代码片段
+   */
+  async executeAsync(code, globalContext) {
+    return this.execute(code, globalContext, 'enhanced');
   }
 }
 
@@ -1010,17 +1263,17 @@ export class EnhancedTools extends plugin {
         },
         {
           reg: /^roj\s*([\s\S]*?)$/i,
-          fnc: 'runJavaScript',  // 改为直接执行JavaScript
+          fnc: 'runJavaScript',
           permission: config.get('permission'),
         },
         {
           reg: /^roi\s*([\s\S]*?)$/i,
-          fnc: 'inspectObject',  // 新增：检查对象
+          fnc: 'inspectObject',
           permission: config.get('permission'),
         },
         {
           reg: /^rj\s*([\s\S]*?)$/i,
-          fnc: 'runMethod',
+          fnc: 'quickEvaluate',
           permission: config.get('permission'),
         },
         {
@@ -1126,10 +1379,23 @@ export class EnhancedTools extends plugin {
     return true;
   }
 
-  /** 直接执行JavaScript代码（原生输出） */
+  /** 
+   * roj - 完整JavaScript执行（支持多行代码、异步、类定义等）
+   * 特点：支持复杂代码结构，完整错误栈追踪，可选执行模式
+   */
   async runJavaScript(e) {
     let code = e.msg.replace(/^roj\s*/i, '').trim();
-    if (!code) return false;
+    if (!code) {
+      await e.reply(`📝 roj - 完整JavaScript执行器
+支持：多行代码、async/await、类定义、复杂逻辑
+用法：roj <JavaScript代码>
+示例：
+roj const arr = [1,2,3]; 
+    const sum = arr.reduce((a,b) => a+b, 0);
+    console.log(sum);
+    return sum;`, true);
+      return true;
+    }
 
     const globalContext = this.getGlobalContext();
     globalContext.e = e;
@@ -1159,11 +1425,19 @@ export class EnhancedTools extends plugin {
           e, 
           finalOutput, 
           '✅ JavaScript 执行结果', 
-          `类型: ${result.resultType} | 用时: ${result.executionTime}秒`
+          `类型: ${result.resultType} | 模式: ${result.mode} | 用时: ${result.executionTime}秒`
         );
       } else {
-        await e.reply(`❌ 执行错误: ${result.error}`, true);
-        logger.error(`[终端工具] JavaScript执行错误: ${result.stack || result.error}`);
+        let errorMsg = `❌ 执行错误\n错误信息: ${result.error}`;
+        if (config.get('jsExecutionMode') === 'safe' && result.error.includes('import')) {
+          errorMsg += '\n\n💡 提示：Safe模式不支持import/export，可使用 rc set jsExecutionMode enhanced 切换到增强模式';
+        }
+        await 制作聊天记录(
+          e,
+          errorMsg + (result.stack ? `\n\n调用栈:\n${result.stack}` : ''),
+          '❌ JavaScript执行错误',
+          `模式: ${result.mode} | 用时: ${result.executionTime}秒`
+        );
       }
     } catch (error) {
       await e.reply(`❌ 执行错误: ${error.message}`, true);
@@ -1173,10 +1447,23 @@ export class EnhancedTools extends plugin {
     return true;
   }
 
-  /** 检查对象（详细信息） */
+  /** 
+   * roi - 对象深度检查（详细分析对象结构）
+   * 特点：显示对象所有属性、方法、原型链，支持循环引用检测
+   */
   async inspectObject(e) {
     let code = e.msg.replace(/^roi\s*/i, '').trim();
-    if (!code) return false;
+    if (!code) {
+      await e.reply(`🔍 roi - 对象深度检查器
+功能：详细分析对象结构、属性、方法、原型链
+用法：roi <对象或表达式>
+示例：
+roi e                    // 检查事件对象
+roi Bot                  // 检查Bot对象
+roi process.versions     // 检查版本信息
+roi new Date()          // 检查日期对象`, true);
+      return true;
+    }
 
     const globalContext = this.getGlobalContext();
     globalContext.e = e;
@@ -1186,12 +1473,24 @@ export class EnhancedTools extends plugin {
       
       if (execResult.success) {
         const result = inspector.inspect(execResult.result, code);
+        const output = inspector.formatResult(result);
+        
         await 制作聊天记录(
           e, 
-          inspector.formatResult(result), 
-          `👁️ 对象检查结果`, 
-          `类型: ${result.type} | 属性: ${result.propertyCount || 0} | 方法: ${result.methodCount || 0}`
+          output, 
+          `🔍 对象检查结果`, 
+          `表达式: ${code} | 类型: ${result.type} | 属性: ${result.propertyCount || 0} | 方法: ${result.methodCount || 0}`
         );
+        
+        // 如果对象很大，提供额外的统计信息
+        if (result.propertyCount > 50 || result.methodCount > 20) {
+          const stats = `\n📊 统计信息:
+• 总属性数: ${result.propertyCount}
+• 总方法数: ${result.methodCount}
+• 检查深度: ${config.get('maxObjectDepth', 4)}
+• 显示模式: ${config.get('printMode', 'full')}`;
+          await e.reply(stats, true);
+        }
       } else {
         await e.reply(`❌ 执行错误: ${execResult.error}`, true);
       }
@@ -1203,49 +1502,88 @@ export class EnhancedTools extends plugin {
     return true;
   }
 
-  /** 执行方法（兼容原有功能） */
-  async runMethod(e) {
-    let msg = e.msg.replace(/^rj\s*/i, '').trim();
-    if (!msg) return false;
+  /** 
+   * rj - 快速表达式计算（简单计算和方法调用）
+   * 特点：快速执行单行表达式，自动返回结果，适合快速测试
+   */
+  async quickEvaluate(e) {
+    let expression = e.msg.replace(/^rj\s*/i, '').trim();
+    if (!expression) {
+      await e.reply(`⚡ rj - 快速表达式计算器
+功能：快速执行单行表达式和简单计算
+用法：rj <表达式>
+示例：
+rj 1 + 2 * 3                   // 数学计算
+rj Math.random()                // 调用方法
+rj Bot.uin                      // 获取属性
+rj [1,2,3].map(x => x*2)       // 数组操作
+rj e.reply("Hello!")           // 发送消息`, true);
+      return true;
+    }
 
     const globalContext = this.getGlobalContext();
-    globalContext.segment = global.segment;
     globalContext.e = e;
 
     try {
-      const result = await jsExecutor.execute(msg, globalContext);
+      // 对于简单表达式，使用快速计算模式
+      const isSimpleExpression = !expression.includes('\n') && 
+                                 !expression.includes(';') &&
+                                 !expression.includes('await') &&
+                                 !expression.includes('async');
       
-      history.add(msg, 'javascript', result.success ? 0 : 1);
+      let result;
+      if (isSimpleExpression) {
+        // 使用快速计算
+        result = await jsExecutor.evaluate(expression, globalContext);
+        if (!result.success) {
+          // 如果快速计算失败，回退到完整执行
+          result = await jsExecutor.execute(expression, globalContext, 'safe');
+        } else {
+          result.executionTime = '< 0.01';
+          result.resultType = result.type;
+          result.mode = 'eval';
+        }
+      } else {
+        // 复杂表达式使用完整执行
+        result = await jsExecutor.execute(expression, globalContext, 'safe');
+      }
+      
+      history.add(expression, 'javascript', result.success ? 0 : 1);
 
       if (result.success) {
         const output = jsExecutor.formatResult(result.result);
-        const maxOutputLength = config.get('maxOutputLength', 5000);
         
-        let finalOutput = output;
-        if (output.length > maxOutputLength) {
-          const outputFile = terminal.saveOutputToFile(msg, output);
-          if (outputFile) {
-            finalOutput = output.substring(0, maxOutputLength) + 
-              `\n\n... 输出太长 (${output.length} 字符)，完整输出已保存到: ${outputFile}`;
-          } else {
-            finalOutput = output.substring(0, maxOutputLength) + 
-              `\n\n... 输出被截断 (共 ${output.length} 字符)`;
+        // 对于简单结果，直接回复
+        if (output.length < 500 && !output.includes('\n')) {
+          await e.reply(`✅ 结果: ${output}`, true);
+        } else {
+          const maxOutputLength = config.get('maxOutputLength', 5000);
+          let finalOutput = output;
+          
+          if (output.length > maxOutputLength) {
+            const outputFile = terminal.saveOutputToFile(expression, output);
+            if (outputFile) {
+              finalOutput = output.substring(0, maxOutputLength) + 
+                `\n\n... 输出太长 (${output.length} 字符)，完整输出已保存到: ${outputFile}`;
+            } else {
+              finalOutput = output.substring(0, maxOutputLength) + 
+                `\n\n... 输出被截断 (共 ${output.length} 字符)`;
+            }
           }
+          
+          await 制作聊天记录(
+            e, 
+            finalOutput, 
+            '⚡ 快速计算结果', 
+            `表达式: ${expression.substring(0, 50)}${expression.length > 50 ? '...' : ''} | 类型: ${result.resultType}`
+          );
         }
-        
-        await 制作聊天记录(
-          e, 
-          finalOutput, 
-          '✅ JavaScript 执行结果', 
-          `类型: ${result.resultType} | 用时: ${result.executionTime}秒`
-        );
       } else {
-        await e.reply(`❌ 执行错误: ${result.error}`, true);
-        logger.error(`[终端工具] JavaScript执行错误: ${result.stack || result.error}`);
+        await e.reply(`❌ 计算错误: ${result.error}`, true);
       }
     } catch (error) {
       await e.reply(`❌ 执行错误: ${error.message}`, true);
-      logger.error(`[终端工具] JavaScript执行错误: ${error.stack || error.message}`);
+      logger.error(`[终端工具] 快速计算错误: ${error.stack || error.message}`);
     }
 
     return true;
@@ -1310,13 +1648,37 @@ export class EnhancedTools extends plugin {
 
     if (!cmd || cmd === 'show' || cmd === 'list') {
       const configData = config.config;
-      let configText = '【工具配置】\n';
+      let configText = '【工具配置】\n\n';
+      
+      const configDesc = {
+        permission: '权限等级',
+        blacklist: '启用黑名单',
+        ban: '禁用命令列表',
+        shell: '使用系统Shell',
+        timeout: '命令超时时间(ms)',
+        maxHistory: '最大历史记录数',
+        updateInterval: '更新间隔(ms)',
+        maxOutputLength: '最大输出长度',
+        maxObjectDepth: '对象检查深度',
+        circularDetection: '循环引用检测',
+        printMode: '输出模式',
+        saveChunkedOutput: '保存分块输出',
+        jsExecutionMode: 'JS执行模式',
+        jsTimeout: 'JS超时时间(ms)'
+      };
 
       for (const [key, value] of Object.entries(configData)) {
-        configText += `• ${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}\n`;
+        const desc = configDesc[key] || key;
+        let displayValue = value;
+        if (typeof value === 'object') {
+          displayValue = JSON.stringify(value);
+        }
+        configText += `• ${desc} (${key}): ${displayValue}\n`;
       }
+      
+      configText += '\n💡 提示: 使用 rc set <key> <value> 修改配置';
 
-      await e.reply(configText, true);
+      await 制作聊天记录(e, configText, '⚙️ 工具配置', '当前配置项');
       return true;
     }
 
@@ -1341,8 +1703,21 @@ export class EnhancedTools extends plugin {
         // 保持原值
       }
 
+      // 特殊配置项验证
+      if (key === 'jsExecutionMode' && !['safe', 'enhanced', 'sandbox'].includes(value)) {
+        await e.reply(`❌ jsExecutionMode 只能是: safe, enhanced, sandbox`, true);
+        return true;
+      }
+
       config.set(key, value);
       await e.reply(`✅ 配置已更新: ${key} = ${value}`, true);
+      
+      // 如果修改了JS执行模式，更新执行器
+      if (key === 'jsExecutionMode') {
+        jsExecutor.setMode(value);
+        await e.reply(`💡 JavaScript执行模式已切换到: ${value}`, true);
+      }
+      
       return true;
     }
 
@@ -1353,10 +1728,34 @@ export class EnhancedTools extends plugin {
       return true;
     }
 
+    if (cmd === 'help') {
+      const helpText = `📋 配置命令帮助
+
+基础命令:
+• rc - 显示当前配置
+• rc set <key> <value> - 设置配置项
+• rc reset - 重置为默认配置
+• rc help - 显示此帮助信息
+
+JS执行模式:
+• safe - 安全模式(默认)，限制某些功能
+• enhanced - 增强模式，支持更多特性
+• sandbox - 沙箱模式，隔离执行环境
+
+示例:
+• rc set jsExecutionMode enhanced
+• rc set timeout 60000
+• rc set maxOutputLength 10000`;
+
+      await 制作聊天记录(e, helpText, '📋 配置帮助', '工具配置说明');
+      return true;
+    }
+
     await e.reply(`📋 配置命令帮助:
 rc - 显示当前配置
 rc set <key> <value> - 设置配置项
-rc reset - 重置为默认配置`, true);
+rc reset - 重置为默认配置
+rc help - 显示详细帮助`, true);
     return true;
   }
 
@@ -1387,6 +1786,8 @@ rc reset - 重置为默认配置`, true);
       terminal: terminal,
       config: config,
       history: history,
+      inspector: inspector,
+      jsExecutor: jsExecutor,
       YAML: YAML,
       fetch: fetch,
       axios: axios,
@@ -1397,6 +1798,15 @@ rc reset - 重置为默认配置`, true);
       stream: stream,
       events: events,
       readline: readline,
+      vm: vm,
+      Buffer: Buffer,
+      console: console,
+      setTimeout: setTimeout,
+      setInterval: setInterval,
+      clearTimeout: clearTimeout,
+      clearInterval: clearInterval,
+      Promise: Promise,
+      ROOT_PATH: ROOT_PATH
     };
   }
 }
