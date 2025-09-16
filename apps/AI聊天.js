@@ -334,12 +334,6 @@ export class XRKAIAssistant extends plugin {
           logger.debug('[XRK-AI] 全局AI响应失败，静默处理');
           return false;
         }
-        // 只有被主动触发时才回复错误
-        const emotionImage = this.getRandomEmotionImage('伤心');
-        if (emotionImage) {
-          await e.reply(segment.image(emotionImage));
-        }
-        await e.reply('思考中断了，请稍后再试~');
         return true;
       }
 
