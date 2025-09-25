@@ -1,4 +1,3 @@
-import plugin from '../../../lib/plugins/plugin.js';
 import { takeScreenshot } from '../../../lib/common/takeScreenshot.js';
 import path from 'path';
 import fs from 'fs';

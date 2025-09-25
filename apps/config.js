@@ -1,7 +1,7 @@
 import path from 'path';
 import plugin from '../../../lib/plugins/plugin.js';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
-import { 制作聊天记录 } from '../../../lib/util.js';
+import { 制作聊天记录 } from '../../../lib/common/util.js';
 
 export class XrkSettings extends plugin {
   constructor() {

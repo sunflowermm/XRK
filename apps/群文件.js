@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import fetch from 'node-fetch'
-import { 制作聊天记录 } from '../../../lib/util.js';
+import { 制作聊天记录 } from '../../../lib/common/util.js';
 
 const fileCache = {}
 

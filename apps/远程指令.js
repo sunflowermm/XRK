@@ -17,7 +17,7 @@ import vm from 'vm';
 import util from 'util';
 import common from '../../../lib/common/common.js';
 import cfg from '../../../lib/config/config.js';
-import { 制作聊天记录 } from '../../../lib/util.js';
+import { 制作聊天记录 } from '../../../lib/common/util.js';
 
 const ROOT_PATH = process.cwd();
 

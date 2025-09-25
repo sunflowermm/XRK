@@ -7,7 +7,7 @@ import {
   execCommand,
   pluginData 
 } from './plugintool.js';
-import { 制作聊天记录 } from '../../../lib/util.js';
+import { 制作聊天记录 } from '../../../lib/common/util.js';
 
 export class ManagePlugin extends plugin {
   constructor() {

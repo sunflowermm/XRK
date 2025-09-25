@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import plugin from '../../../lib/plugins/plugin.js';
 import {
   pluginImageSegments,
   pluginData,
@@ -12,7 +11,7 @@ import {
   execCommand,
   generateTextPluginInfo
 } from './plugintool.js';
-import { 制作聊天记录 } from '../../../lib/util.js';
+import { 制作聊天记录 } from '../../../lib/common/util.js';
 import { restart } from '../components/restart.js';
 
 let isInstalling = false;
