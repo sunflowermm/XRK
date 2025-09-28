@@ -117,13 +117,12 @@ export class UniversalPoke extends plugin {
       priority: xrkcfg.poke?.priority || -5000,
       rule: [{ fnc: 'handlePoke', log: false }]
     })
-    
   }
 
   /** 初始化模块系统 */
   init() {
-    const pokeConfig = xrkcfg.poke || {}
-    const modules = pokeConfig.modules || {}
+    const config = xrkcfg.poke || {}
+    const modules = config.modules || {}
     
     this.modules = {
       basic: {
@@ -151,7 +150,7 @@ export class UniversalPoke extends plugin {
         execute: this.punishmentSystem.bind(this)
       },
       pokeback: {
-        enabled: modules.pokeback ?? true,
+        enabled: modules.pokeback ?? false,
         execute: this.pokebackSystem.bind(this)
       },
       image: {
@@ -159,7 +158,7 @@ export class UniversalPoke extends plugin {
         execute: this.sendImage.bind(this)
       },
       voice: {
-        enabled: modules.voice ?? true,
+        enabled: modules.voice ?? false,
         execute: this.sendVoice.bind(this)
       },
       master: {
@@ -169,6 +168,12 @@ export class UniversalPoke extends plugin {
     }
 
     this.startScheduledTasks()
+    
+    // 监听配置文件变化
+    xrkcfg.on('change', () => {
+      logger.info('[戳一戳] 配置已更新，重新初始化模块')
+      this.init()
+    })
   }
 
   /** 主处理函数 */
@@ -183,23 +188,20 @@ export class UniversalPoke extends plugin {
       // 获取身份信息
       const identities = await this.getIdentities(e)
       
-      // 判断是否戳主人（优化的主人保护逻辑）
-      if (identities.targetIsMaster && this.modules.master.enabled) {
-        // 如果操作者也是主人，或者机器人自己是主人，不触发保护
-        if (identities.operatorIsMaster || identities.botIsMaster) {
-          return false
-        }
-        // 主人戳主人，不触发保护
-        if (identities.operatorIsMaster && identities.targetIsMaster) {
-          return false
-        }
+      // 检查是否戳主人
+      const masterQQs = cfg.masterQQ || []
+      const targetIsMaster = masterQQs.includes(String(e.target_id))
+      const operatorIsMaster = masterQQs.includes(String(e.operator_id))
+      
+      // 处理戳主人的情况（非主人戳主人时触发保护）
+      if (targetIsMaster && !operatorIsMaster && this.modules.master.enabled) {
         return await this.handleMasterPoke(e, identities)
       }
 
       // 只处理戳机器人的情况
       if (e.target_id !== e.self_id) return false
 
-      // 冷却检查
+      // 检查冷却时间
       if (!await this.checkCooldown(e.operator_id, 'interaction')) {
         return true
       }
@@ -223,22 +225,33 @@ export class UniversalPoke extends plugin {
     }
   }
 
+  /** 检查冷却时间 */
+  async checkCooldown(userId, type) {
+    const cooldowns = xrkcfg.poke?.cooldowns || {}
+    const cooldownTime = cooldowns[type] || 3000
+    
+    const key = `${REDIS_PREFIX.COOLDOWN}${type}:${userId}`
+    const lastTime = await storage.get(key)
+    
+    if (lastTime && Date.now() - parseInt(lastTime) < cooldownTime) {
+      return false
+    }
+    
+    await storage.setEx(key, Math.ceil(cooldownTime / 1000), Date.now().toString())
+    return true
+  }
+
   /** 获取身份信息 */
   async getIdentities(e) {
+    const masterQQs = cfg.masterQQ || []
     const operatorMember = e.group.pickMember(e.operator_id)
     const botMember = e.group.pickMember(e.self_id)
-    const targetMember = e.target_id ? e.group.pickMember(e.target_id) : null
-    
-    const masterQQ = cfg.masterQQ || []
     
     return {
-      operatorIsMaster: e.isMaster || masterQQ.includes(String(e.operator_id)),
-      targetIsMaster: masterQQ.includes(String(e.target_id)),
-      botIsMaster: masterQQ.includes(String(e.self_id)),
+      operatorIsMaster: e.isMaster || masterQQs.includes(String(e.operator_id)),
+      targetIsMaster: masterQQs.includes(String(e.target_id)),
       operatorIsOwner: operatorMember?.is_owner || false,
       operatorIsAdmin: operatorMember?.is_admin || false,
-      targetIsOwner: targetMember?.is_owner || false,
-      targetIsAdmin: targetMember?.is_admin || false,
       botIsOwner: botMember?.is_owner || false,
       botIsAdmin: botMember?.is_admin || false,
       operatorRole: operatorMember?.is_owner ? 'owner' : 
@@ -248,28 +261,10 @@ export class UniversalPoke extends plugin {
     }
   }
 
-  /** 冷却检查 */
-  async checkCooldown(userId, type) {
-    const cooldowns = xrkcfg.poke?.cooldowns || {}
-    const cooldownTime = cooldowns[type] || 3000
-    
-    const key = `${REDIS_PREFIX.COOLDOWN}${type}:${userId}`
-    const lastTime = await storage.get(key)
-    const now = Date.now()
-    
-    if (lastTime && now - parseInt(lastTime) < cooldownTime) {
-      return false
-    }
-    
-    await storage.setEx(key, 86400, now.toString())
-    return true
-  }
-
   /** 更新基础信息 */
   async updateBasicInfo(e, userState) {
     const now = Date.now()
     
-    // 连续戳判定（30秒内算连续）
     if (now - userState.lastInteraction < 30000) {
       userState.consecutivePokes++
     } else {
@@ -285,7 +280,7 @@ export class UniversalPoke extends plugin {
   /** 执行模块 */
   async executeModules(e, userState, identities) {
     const results = {}
-    const moduleOrder = ['mood', 'intimacy', 'achievement', 'special', 'basic', 'punishment', 'pokeback', 'image', 'voice']
+    const moduleOrder = ['mood', 'intimacy', 'achievement', 'special', 'basic', 'punishment', 'image', 'voice', 'pokeback']
     
     for (const name of moduleOrder) {
       const module = this.modules[name]
@@ -293,9 +288,9 @@ export class UniversalPoke extends plugin {
         try {
           results[name] = await module.execute(e, userState, identities)
           
-          // 某些模块之间添加延迟，避免消息过快
-          if (['basic', 'special', 'achievement'].includes(name) && results[name]) {
-            await common.sleep(500)
+          // 如果某个模块处理成功，有一定概率跳过后续模块
+          if (results[name] && Math.random() < 0.3) {
+            break
           }
         } catch (err) {
           logger.error(`[戳一戳] 模块${name}执行失败:`, err)
@@ -325,58 +320,51 @@ export class UniversalPoke extends plugin {
 
   /** 心情系统模块 */
   async moodSystem(e, userState, identities) {
-    const moodChange = this.calculateMoodChange(userState, identities)
-    userState.moodValue = Math.max(0, Math.min(100, userState.moodValue + moodChange))
+    const moodChangeChance = xrkcfg.poke?.chances?.mood_change || 0.3
     
-    // 心情等级判定
-    const oldMood = userState.mood
-    if (userState.moodValue < 20) {
-      userState.mood = 'angry'
-    } else if (userState.moodValue < 40) {
-      userState.mood = 'sad'
-    } else if (userState.moodValue < 60) {
-      userState.mood = 'normal'
-    } else if (userState.moodValue < 80) {
-      userState.mood = 'happy'
-    } else {
-      userState.mood = 'excited'
-    }
+    if (Math.random() < moodChangeChance) {
+      const moodChange = this.calculateMoodChange(userState, identities)
+      userState.moodValue = Math.max(0, Math.min(100, userState.moodValue + moodChange))
+      
+      if (userState.moodValue < 20) {
+        userState.mood = 'angry'
+      } else if (userState.moodValue < 40) {
+        userState.mood = 'sad'
+      } else if (userState.moodValue < 60) {
+        userState.mood = 'normal'
+      } else if (userState.moodValue < 80) {
+        userState.mood = 'happy'
+      } else {
+        userState.mood = 'excited'
+      }
 
-    // 心情变化提示
-    if (oldMood !== userState.mood && Math.random() < 0.4) {
-      const moodReplies = responses.mood[userState.mood]
-      if (moodReplies && moodReplies.length > 0) {
-        const reply = moodReplies[Math.floor(Math.random() * moodReplies.length)]
-        await e.reply([
-          segment.at(e.operator_id),
-          `\n💭 ${this.formatReply(reply, e, userState)}`
-        ])
+      if (Math.abs(moodChange) > 10 && Math.random() < 0.5) {
+        const moodReplies = responses.mood[userState.mood]
+        if (moodReplies && moodReplies.length > 0) {
+          const reply = moodReplies[Math.floor(Math.random() * moodReplies.length)]
+          await e.reply([
+            segment.at(e.operator_id),
+            `\n${this.formatReply(reply, e, userState)}`
+          ])
+          return true
+        }
       }
     }
 
-    return userState.mood
+    return false
   }
 
   /** 亲密度系统模块 */
   async intimacySystem(e, userState, identities) {
     let intimacyChange = 1
     
-    // 根据各种因素调整亲密度变化
     if (identities.operatorIsMaster) intimacyChange += 3
-    if (userState.mood === 'happy' || userState.mood === 'excited') intimacyChange += 1
+    if (userState.mood === 'happy') intimacyChange += 1
     if (userState.mood === 'angry') intimacyChange -= 1
     if (userState.consecutivePokes > 10) intimacyChange -= 2
-    if (userState.consecutivePokes > 20) intimacyChange -= 5
-    
-    // 每日首次戳额外奖励
-    const dailyCount = await this.getDailyCount(e.operator_id)
-    if (dailyCount === 1) {
-      intimacyChange += 3
-    }
     
     userState.intimacy = Math.max(0, userState.intimacy + intimacyChange)
     
-    // 关系等级变化检测
     const oldRelationship = userState.relationship
     userState.relationship = this.getRelationshipLevel(userState.intimacy)
     
@@ -386,19 +374,18 @@ export class UniversalPoke extends plugin {
         const reply = upgradeReplies[Math.floor(Math.random() * upgradeReplies.length)]
         await e.reply([
           segment.at(e.operator_id),
-          `\n🎉 关系升级！\n${this.formatReply(reply, e, userState)}\n`,
-          `当前亲密度：${userState.intimacy}`
+          `\n🎉 关系升级！\n${this.formatReply(reply, e, userState)}`
         ])
+        return true
       }
     }
     
-    return userState.intimacy
+    return false
   }
 
   /** 成就系统模块 */
   async achievementSystem(e, userState, identities) {
     const achievements = []
-    const dailyCount = await this.getDailyCount(e.operator_id)
     
     const achievementChecks = [
       { id: 'first_poke', condition: userState.totalPokes === 1, name: '初次见面' },
@@ -407,14 +394,9 @@ export class UniversalPoke extends plugin {
       { id: 'poke_1000', condition: userState.totalPokes === 1000, name: '戳戳大师' },
       { id: 'poke_5000', condition: userState.totalPokes === 5000, name: '戳戳之神' },
       { id: 'consecutive_10', condition: userState.consecutivePokes === 10, name: '连击达人' },
-      { id: 'consecutive_30', condition: userState.consecutivePokes === 30, name: '连击大师' },
       { id: 'intimate_100', condition: userState.intimacy >= 100, name: '亲密好友' },
       { id: 'intimate_500', condition: userState.intimacy >= 500, name: '至交挚友' },
-      { id: 'intimate_1000', condition: userState.intimacy >= 1000, name: '灵魂伴侣' },
-      { id: 'mood_master', condition: userState.moodValue >= 90, name: '心情调节大师' },
-      { id: 'daily_100', condition: dailyCount >= 100, name: '今日戳王' },
-      { id: 'night_owl', condition: new Date().getHours() >= 2 && new Date().getHours() < 5, name: '深夜戳戳党' },
-      { id: 'early_bird', condition: new Date().getHours() >= 5 && new Date().getHours() < 7, name: '早起戳戳鸟' }
+      { id: 'mood_master', condition: userState.moodValue >= 90, name: '心情调节大师' }
     ]
     
     for (const check of achievementChecks) {
@@ -430,29 +412,23 @@ export class UniversalPoke extends plugin {
           `\n🏆 获得成就【${check.name}】\n${this.formatReply(reply, e, userState)}`
         ])
         
-        // 成就奖励
-        if (check.id.includes('poke_')) {
-          userState.intimacy += parseInt(check.id.split('_')[1]) / 10
-        }
+        return true
       }
     }
     
-    return achievements
+    return false
   }
 
   /** 特殊效果模块 */
   async specialEffects(e, userState, identities) {
+    const specialChance = xrkcfg.poke?.chances?.special_trigger || 0.15
+    
     if (!await this.checkCooldown(e.operator_id, 'special_effect')) {
-      return []
+      return false
     }
     
-    const effects = []
-    const chances = xrkcfg.poke?.chances || {}
-    const specialChance = chances.special_trigger || 0.15
-    
-    // 时间特效
-    const hour = new Date().getHours()
     if (Math.random() < specialChance) {
+      const hour = new Date().getHours()
       let timeEffect = null
       
       if (hour >= 5 && hour < 9) {
@@ -471,76 +447,58 @@ export class UniversalPoke extends plugin {
           const reply = replies[Math.floor(Math.random() * replies.length)]
           await e.reply([
             segment.at(e.operator_id),
-            `\n⏰ ${this.formatReply(reply, e, userState)}`
+            `\n${this.formatReply(reply, e, userState)}`
           ])
-          effects.push(timeEffect)
+          return true
         }
       }
     }
     
-    // 特殊效果（暴击、连击等）
-    if (Math.random() < specialChance * 1.5 && userState.intimacy > 50) {
-      const specialEffects = ['lucky', 'critical', 'combo', 'special', 'buff']
-      
-      // 高亲密度解锁更多效果
-      if (userState.intimacy > 200) {
-        specialEffects.push('buff')
-      }
-      if (userState.consecutivePokes > 5) {
-        specialEffects.push('combo')
-      }
-      
-      const effect = specialEffects[Math.floor(Math.random() * specialEffects.length)]
-      const effectReplies = responses.special_effects?.[effect]
-      
-      if (effectReplies && effectReplies.length > 0) {
-        const reply = effectReplies[Math.floor(Math.random() * effectReplies.length)]
-        await e.reply([
-          segment.at(e.operator_id),
-          `\n✨ ${this.formatReply(reply, e, userState)}`
-        ])
-        effects.push(effect)
-        
-        // 特效加成
-        if (effect === 'lucky') {
-          userState.intimacy += 10
-          userState.moodValue += 10
-        } else if (effect === 'critical') {
-          userState.intimacy += 5
-        } else if (effect === 'buff') {
-          userState.moodValue = Math.min(100, userState.moodValue + 20)
+    if (Math.random() < 0.1 && userState.intimacy > 50) {
+      const specialEffects = Object.keys(responses.special_effects || {})
+      if (specialEffects.length > 0) {
+        const effect = specialEffects[Math.floor(Math.random() * specialEffects.length)]
+        const replies = responses.special_effects[effect]
+        if (replies && replies.length > 0) {
+          const reply = replies[Math.floor(Math.random() * replies.length)]
+          await e.reply([
+            segment.at(e.operator_id),
+            `\n✨ ${this.formatReply(reply, e, userState)}`
+          ])
+          return true
         }
       }
     }
     
-    return effects
+    return false
   }
 
   /** 惩罚系统模块 */
   async punishmentSystem(e, userState, identities) {
     if (userState.consecutivePokes <= 5) return null
     
-    const punishments = []
-    const punishChance = xrkcfg.poke?.chances?.punishment || 0.3
+    const punishmentChance = xrkcfg.poke?.chances?.punishment || 0.3
     
-    // 禁言惩罚
-    if (this.canMute(identities) && Math.random() < punishChance) {
-      const muteTime = Math.min(60 * Math.floor(userState.consecutivePokes / 5), 600)
-      
-      try {
-        await e.group.muteMember(e.operator_id, muteTime)
-        const muteReplies = responses.punishments?.mute?.success || ["禁言成功！"]
-        const reply = muteReplies[Math.floor(Math.random() * muteReplies.length)]
+    if (!await this.checkCooldown(e.operator_id, 'punishment')) {
+      return false
+    }
+    
+    if (Math.random() < punishmentChance) {
+      if (this.canMute(identities) && Math.random() < 0.5) {
+        const muteTime = Math.min(60 * userState.consecutivePokes, 1800)
         
-        await e.reply([
-          segment.at(e.operator_id),
-          `\n⛔ ${this.formatReply(reply, e, userState)}\n`,
-          `禁言时长：${muteTime}秒`
-        ])
-        
-        punishments.push('mute')
-      } catch (err) {
-        if (Math.random() < 0.5) {
+        try {
+          await e.group.muteMember(e.operator_id, muteTime)
+          const muteReplies = responses.punishments?.mute?.success || ["禁言成功！"]
+          const reply = muteReplies[Math.floor(Math.random() * muteReplies.length)]
+          
+          await e.reply([
+            segment.at(e.operator_id),
+            `\n${this.formatReply(reply, e, userState)}`
+          ])
+          
+          return true
+        } catch (err) {
           const failReplies = responses.punishments?.mute?.fail || ["禁言失败..."]
           const reply = failReplies[Math.floor(Math.random() * failReplies.length)]
           
@@ -550,28 +508,26 @@ export class UniversalPoke extends plugin {
           ])
         }
       }
+      
+      if (Math.random() < 0.5) {
+        const reduction = Math.min(userState.consecutivePokes * 2, 20)
+        userState.intimacy = Math.max(0, userState.intimacy - reduction)
+        
+        const reductionReplies = responses.punishments?.intimacy_reduction || ["亲密度下降了..."]
+        const reply = reductionReplies[Math.floor(Math.random() * reductionReplies.length)]
+        
+        await e.reply([
+          segment.at(e.operator_id),
+          `\n${this.formatReply(reply.replace('{reduction}', reduction), e, userState)}`
+        ])
+        
+        return true
+      }
     }
     
-    // 亲密度惩罚
-    if (userState.consecutivePokes > 10 && Math.random() < 0.5) {
-      const reduction = Math.min(userState.consecutivePokes * 2, 30)
-      userState.intimacy = Math.max(0, userState.intimacy - reduction)
-      
-      const reductionReplies = responses.punishments?.intimacy_reduction || ["亲密度下降了..."]
-      const reply = reductionReplies[Math.floor(Math.random() * reductionReplies.length)]
-      
-      await e.reply([
-        segment.at(e.operator_id),
-        `\n💔 ${this.formatReply(reply.replace('{reduction}', reduction), e, userState)}`
-      ])
-      
-      punishments.push('intimacy')
-    }
-    
-    // 心情值惩罚
     userState.moodValue = Math.max(0, userState.moodValue - userState.consecutivePokes * 2)
     
-    return punishments
+    return false
   }
 
   /** 反戳系统模块 */
@@ -580,13 +536,9 @@ export class UniversalPoke extends plugin {
     
     let pokebackChance = 0.3
     
-    // 根据状态调整反戳概率
     if (userState.mood === 'angry') pokebackChance += 0.3
-    if (userState.mood === 'excited') pokebackChance += 0.1
     if (userState.consecutivePokes > 5) pokebackChance += 0.2
-    if (userState.consecutivePokes > 10) pokebackChance += 0.3
     if (identities.operatorIsMaster) pokebackChance -= 0.2
-    if (userState.intimacy > 500) pokebackChance += 0.1
     
     if (Math.random() < pokebackChance) {
       const pokebackReplies = responses.pokeback?.[userState.mood] || responses.pokeback?.normal || ["戳回去！"]
@@ -594,14 +546,10 @@ export class UniversalPoke extends plugin {
       
       await e.reply([
         segment.at(e.operator_id),
-        `\n👉 ${this.formatReply(reply, e, userState)}`
+        `\n${this.formatReply(reply, e, userState)}`
       ])
       
-      // 计算反戳次数
-      let pokeCount = 1
-      if (userState.consecutivePokes > 5) pokeCount = Math.min(Math.floor(userState.consecutivePokes / 3), 5)
-      if (userState.mood === 'angry') pokeCount = Math.min(pokeCount * 2, 10)
-      
+      const pokeCount = Math.min(Math.floor(userState.consecutivePokes / 2), 5)
       for (let i = 0; i < pokeCount; i++) {
         await common.sleep(1000)
         await this.pokeMember(e, e.operator_id)
@@ -617,10 +565,8 @@ export class UniversalPoke extends plugin {
   async sendImage(e, userState, identities) {
     let imageChance = xrkcfg.poke?.image_chance || 0.3
     
-    // 根据状态调整图片概率
-    if (userState.mood === 'happy' || userState.mood === 'excited') imageChance += 0.2
+    if (userState.mood === 'happy') imageChance += 0.1
     if (userState.intimacy > 100) imageChance += 0.1
-    if (userState.intimacy > 500) imageChance += 0.1
     
     if (Math.random() < imageChance) {
       try {
@@ -635,20 +581,6 @@ export class UniversalPoke extends plugin {
             return true
           }
         }
-        
-        // 备用：从API获取图片
-        if (Math.random() < 0.5) {
-          try {
-            const response = await fetch("https://api.xingdream.top/API/poke.php")
-            const data = await response.json()
-            if (data?.status == 200 && data?.link) {
-              await e.reply(segment.image(data.link))
-              return true
-            }
-          } catch (err) {
-            logger.debug('[戳一戳] API图片获取失败')
-          }
-        }
       } catch (err) {
         logger.error('[戳一戳] 发送图片失败:', err)
       }
@@ -661,10 +593,8 @@ export class UniversalPoke extends plugin {
   async sendVoice(e, userState, identities) {
     let voiceChance = xrkcfg.poke?.voice_chance || 0.2
     
-    // 根据状态调整语音概率
     if (userState.mood === 'excited') voiceChance += 0.1
     if (userState.intimacy > 200) voiceChance += 0.1
-    if (userState.relationship === 'intimate' || userState.relationship === 'soulmate') voiceChance += 0.1
     
     if (Math.random() < voiceChance) {
       try {
@@ -687,14 +617,12 @@ export class UniversalPoke extends plugin {
     return false
   }
 
-  /** 处理戳主人（优化后的逻辑） */
+  /** 处理戳主人 */
   async handleMasterPoke(e, identities) {
     const record = await this.getMasterPokeRecord(e.group_id, e.operator_id)
     record.count++
-    record.lastPoke = Date.now()
     await this.saveMasterPokeRecord(e.group_id, e.operator_id, record)
     
-    // 选择回复池
     let replyPool = responses.master_protection?.normal || ["不许戳主人！"]
     
     if (identities.operatorIsOwner) {
@@ -706,15 +634,13 @@ export class UniversalPoke extends plugin {
     }
     
     const reply = replyPool[Math.floor(Math.random() * replyPool.length)]
-      .replace('{count}', record.count)
     
     await e.reply([
       segment.at(e.operator_id),
-      `\n⚠️ ${reply}`
+      `\n${reply.replace('{count}', record.count)}`
     ])
     
-    // 发送保护图片
-    if (xrkcfg.poke?.master_image && Math.random() < 0.7) {
+    if (xrkcfg.poke?.master_image) {
       try {
         const response = await fetch("https://api.xingdream.top/API/poke.php")
         const data = await response.json()
@@ -722,11 +648,10 @@ export class UniversalPoke extends plugin {
           await e.reply(segment.image(data.link))
         }
       } catch (err) {
-        logger.debug('[戳主人] 图片获取失败')
+        logger.error('[戳主人] 图片获取失败:', err)
       }
     }
     
-    // 执行惩罚
     if (xrkcfg.poke?.master_punishment) {
       await this.punishMasterPoker(e, identities, record)
     }
@@ -736,38 +661,31 @@ export class UniversalPoke extends plugin {
 
   /** 惩罚戳主人的人 */
   async punishMasterPoker(e, identities, record) {
-    // 根据次数决定惩罚等级
     let punishLevel = 1
     if (record.count > 3) punishLevel = 2
     if (record.count > 10) punishLevel = 3
-    if (record.count > 20) punishLevel = 4
     
-    // 禁言惩罚
-    if (this.canMute(identities) && Math.random() < Math.min(0.3 * punishLevel, 0.9)) {
-      const baseTime = 60
-      const muteTime = Math.min(baseTime * punishLevel * Math.min(record.count, 10), 3600)
+    if (this.canMute(identities) && Math.random() < 0.5 * punishLevel) {
+      const muteTime = Math.min(300 * punishLevel * record.count, 86400)
       
       try {
         await e.group.muteMember(e.operator_id, muteTime)
-        const muteReplies = responses.master_protection?.punishments?.mute || ["执行禁言！"]
+        const muteReplies = responses.master_protection?.punishments?.mute || ["禁言！"]
         const reply = muteReplies[Math.floor(Math.random() * muteReplies.length)]
-        await e.reply(`${reply} (${muteTime}秒)`)
+        await e.reply(reply)
       } catch (err) {
-        if (Math.random() < 0.3) {
-          const failReplies = responses.master_protection?.punishments?.mute_fail || ["禁言失败..."]
-          const reply = failReplies[Math.floor(Math.random() * failReplies.length)]
-          await e.reply(reply)
-        }
+        const failReplies = responses.master_protection?.punishments?.mute_fail || ["禁言失败..."]
+        const reply = failReplies[Math.floor(Math.random() * failReplies.length)]
+        await e.reply(reply)
       }
     }
     
-    // 反戳惩罚
-    if (xrkcfg.poke?.pokeback_enabled && Math.random() < Math.min(0.5 + punishLevel * 0.1, 0.9)) {
+    if (xrkcfg.poke?.pokeback_enabled && Math.random() < 0.7) {
       const pokeReplies = responses.master_protection?.punishments?.poke || ["反击！"]
       const reply = pokeReplies[Math.floor(Math.random() * pokeReplies.length)]
       await e.reply(reply)
       
-      const pokeCount = Math.min(3 * punishLevel, 15)
+      const pokeCount = Math.min(5 * punishLevel, 20)
       for (let i = 0; i < pokeCount; i++) {
         await common.sleep(800)
         await this.pokeMember(e, e.operator_id)
@@ -781,36 +699,15 @@ export class UniversalPoke extends plugin {
   getReplyPool(userState, identities) {
     let pool = []
     
-    // 基础关系回复
     const relationshipReplies = responses.relationship?.[userState.relationship] || responses.relationship?.stranger || []
     pool = [...relationshipReplies]
     
-    // 添加心情回复
-    if (responses.mood?.[userState.mood] && Math.random() < 0.3) {
+    if (responses.mood?.[userState.mood]) {
       pool = [...pool, ...responses.mood[userState.mood]]
     }
     
-    // 主人特殊回复
     if (identities.operatorIsMaster && responses.special_identity?.master) {
       pool = [...pool, ...responses.special_identity.master]
-    }
-    
-    // 节日特殊回复
-    const month = new Date().getMonth() + 1
-    const day = new Date().getDate()
-    
-    if (month === 1 && day <= 7) {
-      if (responses.festival_effects?.new_year) {
-        pool = [...pool, ...responses.festival_effects.new_year]
-      }
-    } else if (month === 2 && day === 14) {
-      if (responses.festival_effects?.valentine) {
-        pool = [...pool, ...responses.festival_effects.valentine]
-      }
-    } else if (month === 12 && day >= 24 && day <= 26) {
-      if (responses.festival_effects?.christmas) {
-        pool = [...pool, ...responses.festival_effects.christmas]
-      }
     }
     
     return pool
@@ -820,19 +717,13 @@ export class UniversalPoke extends plugin {
   calculateReplyChance(userState, identities) {
     let chance = 0.6
     
-    // 亲密度影响
-    chance += Math.min(0.3, userState.intimacy / 1000)
+    chance += Math.min(0.2, userState.intimacy / 1000)
     
-    // 心情影响
-    if (userState.mood === 'happy' || userState.mood === 'excited') chance += 0.1
+    if (userState.mood === 'happy') chance += 0.1
     if (userState.mood === 'angry') chance -= 0.2
-    if (userState.mood === 'sad') chance -= 0.1
     
-    // 连续戳影响
     if (userState.consecutivePokes > 5) chance -= 0.3
-    if (userState.consecutivePokes > 10) chance -= 0.4
     
-    // 身份影响
     if (identities.operatorIsMaster) chance += 0.2
     
     return Math.max(0.1, Math.min(1, chance))
@@ -841,31 +732,19 @@ export class UniversalPoke extends plugin {
   /** 计算心情变化 */
   calculateMoodChange(userState, identities) {
     let change = 0
-    const moodChangeChance = xrkcfg.poke?.chances?.mood_change || 0.3
     
-    if (Math.random() > moodChangeChance) return 0
-    
-    // 基础变化
     if (userState.consecutivePokes <= 3) {
-      change = Math.random() * 10 - 2 // -2 到 8
+      change = Math.random() * 5
     } else if (userState.consecutivePokes <= 10) {
-      change = -Math.random() * 5 - 2 // -7 到 -2
+      change = -Math.random() * 5
     } else {
-      change = -Math.random() * 15 - 5 // -20 到 -5
+      change = -Math.random() * 10
     }
     
-    // 主人加成
     if (identities.operatorIsMaster) change += 5
     
-    // 时间影响
     const hour = new Date().getHours()
     if (hour >= 22 || hour < 6) change -= 3
-    if (hour >= 9 && hour < 11) change += 2
-    if (hour >= 14 && hour < 17) change += 1
-    
-    // 亲密度影响
-    if (userState.intimacy > 500) change += 2
-    if (userState.intimacy > 1000) change += 3
     
     return change
   }
@@ -888,46 +767,29 @@ export class UniversalPoke extends plugin {
     return reply
       .replace(/{name}/g, nickname)
       .replace(/{intimacy}/g, userState.intimacy)
-      .replace(/{mood}/g, this.getMoodText(userState.mood))
+      .replace(/{mood}/g, this.getMoodName(userState.mood))
       .replace(/{consecutive}/g, userState.consecutivePokes)
       .replace(/{total}/g, userState.totalPokes)
-      .replace(/{relationship}/g, this.getRelationshipText(userState.relationship))
+      .replace(/{count}/g, userState.consecutivePokes)
   }
 
-  /** 获取心情文字 */
-  getMoodText(mood) {
-    const moodMap = {
+  /** 获取心情名称 */
+  getMoodName(mood) {
+    const moodNames = {
       angry: '生气',
       sad: '难过',
       normal: '普通',
       happy: '开心',
       excited: '兴奋'
     }
-    return moodMap[mood] || mood
-  }
-
-  /** 获取关系文字 */
-  getRelationshipText(relationship) {
-    const relationshipMap = {
-      stranger: '陌生人',
-      acquaintance: '认识的人',
-      friend: '朋友',
-      close_friend: '亲密朋友',
-      best_friend: '最好的朋友',
-      intimate: '亲密无间',
-      soulmate: '灵魂伴侣'
-    }
-    return relationshipMap[relationship] || relationship
+    return moodNames[mood] || mood
   }
 
   /** 判断是否可以禁言 */
   canMute(identities) {
-    // 机器人是群主
     if (identities.botIsOwner) return true
     
-    // 机器人是管理员
     if (identities.botIsAdmin) {
-      // 不能禁言群主和管理员
       if (identities.operatorIsOwner || identities.operatorIsAdmin) return false
       return true
     }
@@ -943,26 +805,28 @@ export class UniversalPoke extends plugin {
       if (e.group?.pokeMember) {
         await e.group.pokeMember(userId)
       } else {
-        const pokeEmojis = ['👉', '👈', '👆', '👇', '☝️', '👋', '✋', '🤏', '👊']
-        const emoji = pokeEmojis[Math.floor(Math.random() * pokeEmojis.length)]
         await e.reply([
           segment.at(userId),
-          ` ${emoji} 戳你一下！`
+          '\n👉 戳你一下！'
         ])
       }
     } catch (err) {
-      logger.debug('[戳一戳] 戳成员失败')
+      logger.error('[戳一戳] 戳成员失败:', err)
     }
   }
 
   /** 定时任务 */
   startScheduledTasks() {
-    // 每小时检查一次
+    // 每日重置
     setInterval(() => {
       const hour = new Date().getHours()
       if (hour === 0) {
         this.resetDailyData()
       }
+    }, 3600000)
+    
+    // 清理过期数据
+    setInterval(() => {
       this.cleanExpiredData()
     }, 3600000)
   }
@@ -989,29 +853,14 @@ export class UniversalPoke extends plugin {
         `${REDIS_PREFIX.COOLDOWN}*`
       ]
       
-      let cleanedCount = 0
       for (const pattern of patterns) {
         const keys = await storage.keys(pattern)
         for (const key of keys) {
           const ttl = await storage.ttl(key)
-          if (ttl === -1) {
-            // 没有设置过期时间的数据，检查是否太旧
-            const data = await storage.get(key)
-            if (data) {
-              try {
-                const parsed = JSON.parse(data)
-                if (parsed.lastInteraction && Date.now() - parsed.lastInteraction > 30 * 24 * 3600000) {
-                  await storage.del(key)
-                  cleanedCount++
-                }
-              } catch {}
-            }
+          if (ttl === 0) {
+            await storage.del(key)
           }
         }
-      }
-      
-      if (cleanedCount > 0) {
-        logger.info(`[戳一戳] 清理了${cleanedCount}条过期数据`)
       }
     } catch (err) {
       logger.error('[戳一戳] 清理过期数据失败:', err)
@@ -1028,7 +877,6 @@ export class UniversalPoke extends plugin {
       
       if (data) {
         const state = JSON.parse(data)
-        // 确保所有字段都存在
         return { ...DEFAULT_USER_STATE, ...state }
       }
       
@@ -1043,7 +891,6 @@ export class UniversalPoke extends plugin {
   async saveUserState(userId, userState) {
     try {
       const key = `${REDIS_PREFIX.USER_STATE}${userId}`
-      // 保存7天
       await storage.setEx(key, 604800, JSON.stringify(userState))
     } catch (err) {
       logger.error('[戳一戳] 保存用户状态失败:', err)
@@ -1066,19 +913,15 @@ export class UniversalPoke extends plugin {
   async incrementDailyCount(userId) {
     try {
       const key = `${REDIS_PREFIX.DAILY_COUNT}${userId}`
-      const count = await storage.incr(key)
+      await storage.incr(key)
       
-      // 设置过期时间到当天结束
       const now = new Date()
       const endOfDay = new Date(now)
       endOfDay.setHours(23, 59, 59, 999)
       const ttl = Math.floor((endOfDay - now) / 1000)
       await storage.expire(key, ttl)
-      
-      return count
     } catch (err) {
       logger.error('[戳一戳] 增加每日次数失败:', err)
-      return 0
     }
   }
 
@@ -1103,6 +946,7 @@ export class UniversalPoke extends plugin {
   async saveMasterPokeRecord(groupId, userId, record) {
     try {
       const key = `${REDIS_PREFIX.MASTER_RECORD}${groupId}:${userId}`
+      record.lastPoke = Date.now()
       await storage.setEx(key, 86400, JSON.stringify(record))
     } catch (err) {
       logger.error('[戳一戳] 保存主人戳戳记录失败:', err)

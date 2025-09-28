@@ -1,74 +1,65 @@
 import fs from 'fs'
 import path from 'path'
 import yaml from 'yaml'
-import chokidar from 'chokidar'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const ROOT_PATH = process.cwd()
+const CONFIG_PATH = path.join(ROOT_PATH, 'data/xrkconfig/config.yaml')
 
 class XRKConfig {
   constructor() {
-    this.configPath = path.join(process.cwd(), 'data/xrkconfig/config.yaml')
     this.config = {}
     this.watchers = new Map()
-    this.callbacks = new Set()
-    
-    this.loadConfig()
-    this.watchConfig()
+    this.load()
+    this.watch()
   }
 
-  loadConfig() {
+  load() {
     try {
-      if (fs.existsSync(this.configPath)) {
-        const content = fs.readFileSync(this.configPath, 'utf8')
+      if (fs.existsSync(CONFIG_PATH)) {
+        const content = fs.readFileSync(CONFIG_PATH, 'utf8')
         this.config = yaml.parse(content) || {}
         logger.info('[XRKConfig] 配置文件加载成功')
       } else {
         logger.warn('[XRKConfig] 配置文件不存在，使用默认配置')
         this.config = this.getDefaultConfig()
-        this.saveConfig()
+        this.save()
       }
     } catch (e) {
       logger.error('[XRKConfig] 配置文件加载失败:', e)
       this.config = this.getDefaultConfig()
     }
-    this.callbacks.forEach(callback => callback(this.config))
   }
 
-  saveConfig() {
+  save() {
     try {
-      const dir = path.dirname(this.configPath)
+      const dir = path.dirname(CONFIG_PATH)
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true })
       }
-      fs.writeFileSync(this.configPath, yaml.stringify(this.config))
+      fs.writeFileSync(CONFIG_PATH, yaml.stringify(this.config), 'utf8')
       logger.info('[XRKConfig] 配置文件保存成功')
     } catch (e) {
       logger.error('[XRKConfig] 配置文件保存失败:', e)
     }
   }
 
-  watchConfig() {
-    if (fs.existsSync(this.configPath)) {
-      const watcher = chokidar.watch(this.configPath, {
-        persistent: true,
-        ignoreInitial: true
+  watch() {
+    if (fs.existsSync(CONFIG_PATH)) {
+      fs.watchFile(CONFIG_PATH, (curr, prev) => {
+        if (curr.mtime !== prev.mtime) {
+          logger.info('[XRKConfig] 检测到配置文件变更，重新加载')
+          this.load()
+          this.emit('change')
+        }
       })
-      
-      watcher.on('change', () => {
-        logger.info('[XRKConfig] 配置文件变更，重新加载')
-        this.loadConfig()
-      })
-      
-      this.watchers.set('main', watcher)
     }
   }
 
-  // 注册配置变更回调
-  onConfigChange(callback) {
-    this.callbacks.add(callback)
-    return () => this.callbacks.delete(callback)
-  }
-
-  // 获取配置项
-  get(key, defaultValue) {
+  get(key, defaultValue = null) {
     const keys = key.split('.')
     let value = this.config
     
@@ -80,7 +71,7 @@ class XRKConfig {
       }
     }
     
-    return value ?? defaultValue
+    return value
   }
 
   set(key, value) {
@@ -96,42 +87,37 @@ class XRKConfig {
     }
     
     obj[keys[keys.length - 1]] = value
-    this.saveConfig()
+    this.save()
   }
 
-  get poke() {
-    return this.config.poke || {}
+  on(event, callback) {
+    if (!this.watchers.has(event)) {
+      this.watchers.set(event, [])
+    }
+    this.watchers.get(event).push(callback)
   }
-  
-  get ai() {
-    return this.config.ai || {}
+
+  emit(event) {
+    if (this.watchers.has(event)) {
+      this.watchers.get(event).forEach(callback => callback(this.config))
+    }
   }
-  
-  get news_groupss() {
-    return this.config.news_groupss || []
-  }
-  
-  get news_pushtime() {
-    return this.config.news_pushtime || 8
-  }
+
+  get poke() { return this.config.poke }
+  get ai() { return this.config.ai }
+  get news_groupss() { return this.config.news_groupss }
+  get news_pushtime() { return this.config.news_pushtime }
+  get peopleai() { return this.config.peopleai }
+  get screen_shot_quality() { return this.config.screen_shot_quality }
+  get help_priority() { return this.config.help_priority }
+  get emoji_filename() { return this.config.emoji_filename }
+  get signchecker() { return this.config.signchecker }
+  get sharing() { return this.config.sharing }
+  get selfcontrol() { return this.config.selfcontrol }
+  get coremaster() { return this.config.coremaster }
+  get time_groupss() { return this.config.time_groupss }
+  get screen_shot_http() { return this.config.screen_shot_http }
+  get thumwhiteList() { return this.config.thumwhiteList }
 }
 
-const xrkconfig = new XRKConfig()
-const xrkcfg = new Proxy(xrkconfig, {
-  get(target, prop) {
-    if (prop in target.config) {
-      return target.config[prop]
-    }
-    if (typeof target[prop] === 'function') {
-      return target[prop].bind(target)
-    }
-    return target[prop]
-  },
-  set(target, prop, value) {
-    target.config[prop] = value
-    target.saveConfig()
-    return true
-  }
-})
-
-export default xrkcfg
+export default new XRKConfig()
