@@ -1,6 +1,6 @@
 import cfg from '../../../lib/config/config.js'
 import common from '../../../lib/common/common.js'
-import xrkcfg from './xrkconfig.js'
+import xrkcfg from '../components/xrkconfig.js'
 import fs from 'fs'
 import path from 'path'
 import fetch from 'node-fetch'
