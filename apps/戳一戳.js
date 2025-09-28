@@ -117,6 +117,7 @@ export class UniversalPoke extends plugin {
       priority: xrkcfg.poke?.priority || -5000,
       rule: [{ fnc: 'handlePoke', log: false }]
     })
+    this.init()
   }
 
   /** 初始化模块系统 */
@@ -170,10 +171,12 @@ export class UniversalPoke extends plugin {
     this.startScheduledTasks()
     
     // 监听配置文件变化
-    xrkcfg.on('change', () => {
-      logger.info('[戳一戳] 配置已更新，重新初始化模块')
-      this.init()
-    })
+    if (xrkcfg.on) {
+      xrkcfg.on('change', () => {
+        logger.info('[戳一戳] 配置已更新，重新初始化模块')
+        this.init()
+      })
+    }
   }
 
   /** 主处理函数 */
@@ -224,6 +227,113 @@ export class UniversalPoke extends plugin {
       return false
     }
   }
+
+  /** 主人保护模块 */
+  async masterProtection(e, userState, identities) {
+    // 这个模块在executeModules中不会被调用，因为主人保护在handleMasterPoke中处理
+    // 但保留这个函数以保持模块结构完整性
+    return false
+  }
+
+  /** 处理戳主人 */
+  async handleMasterPoke(e, identities) {
+    try {
+      const record = await this.getMasterPokeRecord(e.group_id, e.operator_id)
+      record.count++
+      await this.saveMasterPokeRecord(e.group_id, e.operator_id, record)
+      
+      // 根据不同情况选择回复池
+      let replyPool = responses.master_protection?.normal || ["不许戳主人！"]
+      
+      // 根据戳戳者的身份选择不同的回复
+      if (identities.operatorIsOwner) {
+        replyPool = responses.master_protection?.owner_warning || replyPool
+      } else if (identities.operatorIsAdmin) {
+        replyPool = responses.master_protection?.admin_warning || replyPool
+      } else if (record.count > 5) {
+        replyPool = responses.master_protection?.repeat_offender || replyPool
+      }
+      
+      // 格式化回复
+      const reply = replyPool[Math.floor(Math.random() * replyPool.length)]
+      const formattedReply = reply
+        .replace(/{count}/g, record.count)
+        .replace(/{name}/g, e.sender?.card || e.sender?.nickname || '你')
+      
+      // 发送文字回复
+      await e.reply([
+        segment.at(e.operator_id),
+        `\n${formattedReply}`
+      ])
+      
+      // 如果启用了主人保护图片
+      if (xrkcfg.poke?.master_image) {
+        try {
+          const response = await fetch("https://api.xingdream.top/API/poke.php")
+          const data = await response.json()
+          if (data?.status == 200 && data?.link) {
+            await e.reply(segment.image(data.link))
+          }
+        } catch (err) {
+          logger.error('[戳主人] 图片获取失败:', err)
+        }
+      }
+      
+      // 如果启用了主人保护惩罚
+      if (xrkcfg.poke?.master_punishment) {
+        await this.punishMasterPoker(e, identities, record)
+      }
+      
+      return true
+    } catch (err) {
+      logger.error('[戳主人] 处理失败:', err)
+      return false
+    }
+  }
+
+  /** 惩罚戳主人的人 */
+  async punishMasterPoker(e, identities, record) {
+    try {
+      // 根据戳戳次数决定惩罚等级
+      let punishLevel = 1
+      if (record.count > 3) punishLevel = 2
+      if (record.count > 10) punishLevel = 3
+      
+      // 尝试禁言
+      if (this.canMute(identities) && Math.random() < 0.5 * punishLevel) {
+        const muteTime = Math.min(300 * punishLevel * record.count, 86400) // 最多禁言24小时
+        
+        try {
+          await e.group.muteMember(e.operator_id, muteTime)
+          const muteReplies = responses.master_protection?.punishments?.mute || ["禁言！"]
+          const reply = muteReplies[Math.floor(Math.random() * muteReplies.length)]
+          await e.reply(reply.replace(/{time}/g, Math.floor(muteTime / 60)))
+        } catch (err) {
+          const failReplies = responses.master_protection?.punishments?.mute_fail || ["禁言失败..."]
+          const reply = failReplies[Math.floor(Math.random() * failReplies.length)]
+          await e.reply(reply)
+        }
+      }
+      
+      // 反戳惩罚
+      if (xrkcfg.poke?.pokeback_enabled && Math.random() < 0.7) {
+        const pokeReplies = responses.master_protection?.punishments?.poke || ["反击！"]
+        const reply = pokeReplies[Math.floor(Math.random() * pokeReplies.length)]
+        await e.reply(reply)
+        
+        // 连续戳回
+        const pokeCount = Math.min(5 * punishLevel, 20)
+        for (let i = 0; i < pokeCount; i++) {
+          await common.sleep(800)
+          await this.pokeMember(e, e.operator_id)
+        }
+      }
+    } catch (err) {
+      logger.error('[戳主人] 惩罚执行失败:', err)
+    }
+  }
+
+  // ... [其他所有原有的函数保持不变] ...
 
   /** 检查冷却时间 */
   async checkCooldown(userId, type) {
@@ -615,82 +725,6 @@ export class UniversalPoke extends plugin {
     }
     
     return false
-  }
-
-  /** 处理戳主人 */
-  async handleMasterPoke(e, identities) {
-    const record = await this.getMasterPokeRecord(e.group_id, e.operator_id)
-    record.count++
-    await this.saveMasterPokeRecord(e.group_id, e.operator_id, record)
-    
-    let replyPool = responses.master_protection?.normal || ["不许戳主人！"]
-    
-    if (identities.operatorIsOwner) {
-      replyPool = responses.master_protection?.owner_warning || replyPool
-    } else if (identities.operatorIsAdmin) {
-      replyPool = responses.master_protection?.admin_warning || replyPool
-    } else if (record.count > 5) {
-      replyPool = responses.master_protection?.repeat_offender || replyPool
-    }
-    
-    const reply = replyPool[Math.floor(Math.random() * replyPool.length)]
-    
-    await e.reply([
-      segment.at(e.operator_id),
-      `\n${reply.replace('{count}', record.count)}`
-    ])
-    
-    if (xrkcfg.poke?.master_image) {
-      try {
-        const response = await fetch("https://api.xingdream.top/API/poke.php")
-        const data = await response.json()
-        if (data?.status == 200 && data?.link) {
-          await e.reply(segment.image(data.link))
-        }
-      } catch (err) {
-        logger.error('[戳主人] 图片获取失败:', err)
-      }
-    }
-    
-    if (xrkcfg.poke?.master_punishment) {
-      await this.punishMasterPoker(e, identities, record)
-    }
-    
-    return true
-  }
-
-  /** 惩罚戳主人的人 */
-  async punishMasterPoker(e, identities, record) {
-    let punishLevel = 1
-    if (record.count > 3) punishLevel = 2
-    if (record.count > 10) punishLevel = 3
-    
-    if (this.canMute(identities) && Math.random() < 0.5 * punishLevel) {
-      const muteTime = Math.min(300 * punishLevel * record.count, 86400)
-      
-      try {
-        await e.group.muteMember(e.operator_id, muteTime)
-        const muteReplies = responses.master_protection?.punishments?.mute || ["禁言！"]
-        const reply = muteReplies[Math.floor(Math.random() * muteReplies.length)]
-        await e.reply(reply)
-      } catch (err) {
-        const failReplies = responses.master_protection?.punishments?.mute_fail || ["禁言失败..."]
-        const reply = failReplies[Math.floor(Math.random() * failReplies.length)]
-        await e.reply(reply)
-      }
-    }
-    
-    if (xrkcfg.poke?.pokeback_enabled && Math.random() < 0.7) {
-      const pokeReplies = responses.master_protection?.punishments?.poke || ["反击！"]
-      const reply = pokeReplies[Math.floor(Math.random() * pokeReplies.length)]
-      await e.reply(reply)
-      
-      const pokeCount = Math.min(5 * punishLevel, 20)
-      for (let i = 0; i < pokeCount; i++) {
-        await common.sleep(800)
-        await this.pokeMember(e, e.operator_id)
-      }
-    }
   }
 
   // ========== 工具函数 ==========
