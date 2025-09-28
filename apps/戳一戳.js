@@ -169,14 +169,6 @@ export class UniversalPoke extends plugin {
     }
 
     this.startScheduledTasks()
-    
-    // 监听配置文件变化
-    if (xrkcfg.on) {
-      xrkcfg.on('change', () => {
-        logger.info('[戳一戳] 配置已更新，重新初始化模块')
-        this.init()
-      })
-    }
   }
 
   /** 主处理函数 */
@@ -242,10 +234,8 @@ export class UniversalPoke extends plugin {
       record.count++
       await this.saveMasterPokeRecord(e.group_id, e.operator_id, record)
       
-      // 根据不同情况选择回复池
       let replyPool = responses.master_protection?.normal || ["不许戳主人！"]
       
-      // 根据戳戳者的身份选择不同的回复
       if (identities.operatorIsOwner) {
         replyPool = responses.master_protection?.owner_warning || replyPool
       } else if (identities.operatorIsAdmin) {
@@ -254,7 +244,6 @@ export class UniversalPoke extends plugin {
         replyPool = responses.master_protection?.repeat_offender || replyPool
       }
       
-      // 格式化回复
       const reply = replyPool[Math.floor(Math.random() * replyPool.length)]
       const formattedReply = reply
         .replace(/{count}/g, record.count)
