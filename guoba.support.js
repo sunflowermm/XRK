@@ -114,33 +114,195 @@ export function supportGuoba() {
           component: 'SOFT_GROUP_BEGIN'
         },
         {
-          field: 'poke_priority',
+          field: 'poke.enabled',
+          label: '戳一戳总开关',
+          bottomHelpMessage: '控制戳一戳功能的总开关',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.priority',
           label: '戳一戳优先级',
           helpMessage: '设置戳一戳优先级，优先级越低越优先',
           component: 'InputNumber',
           componentProps: {
-            defaultValue: 500,
+            defaultValue: -5000,
             bordered: true,
             autofocus: true,
             controls: true
           }
         },
         {
-          field: 'corepoke_priority',
-          label: '戳一戳主人优先级',
-          helpMessage: '设置戳一戳主人优先级，优先级越低越优先',
+          label: '戳一戳模块开关',
+          component: 'SOFT_GROUP_BEGIN'
+        },
+        {
+          field: 'poke.modules.basic',
+          label: '基础回复',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.mood',
+          label: '心情系统',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.intimacy',
+          label: '亲密度系统',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.achievement',
+          label: '成就系统',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.special',
+          label: '特殊效果',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.punishment',
+          label: '惩罚系统',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.pokeback',
+          label: '反戳系统',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.image',
+          label: '图片发送',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.voice',
+          label: '语音发送',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.modules.master',
+          label: '主人保护',
+          component: 'Switch'
+        },
+        {
+          label: '戳一戳功能配置',
+          component: 'SOFT_GROUP_BEGIN'
+        },
+        {
+          field: 'poke.pokeback_enabled',
+          label: '机器人戳回功能',
+          bottomHelpMessage: '是否启用机器人戳回功能（无法戳时关闭）',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.image_chance',
+          label: '发送图片概率',
+          component: 'Slider',
+          componentProps: {
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.3
+          }
+        },
+        {
+          field: 'poke.voice_chance',
+          label: '发送语音概率',
+          component: 'Slider',
+          componentProps: {
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.2
+          }
+        },
+        {
+          field: 'poke.master_image',
+          label: '戳主人时发送图片',
+          component: 'Switch'
+        },
+        {
+          field: 'poke.master_punishment',
+          label: '惩罚戳主人的人',
+          component: 'Switch'
+        },
+        {
+          label: '戳一戳冷却时间',
+          component: 'SOFT_GROUP_BEGIN'
+        },
+        {
+          field: 'poke.cooldowns.interaction',
+          label: '互动冷却（毫秒）',
           component: 'InputNumber',
           componentProps: {
-            defaultValue: 500,
+            defaultValue: 30000,
             bordered: true,
             autofocus: true,
-            controls: true
+            controls: true,
+            min: 0
           }
         },
         {
-          field: 'chuomaster',
-          label: '戳一戳主人开关',
-          component: 'Switch'
+          field: 'poke.cooldowns.special_effect',
+          label: '特效冷却（毫秒）',
+          component: 'InputNumber',
+          componentProps: {
+            defaultValue: 180000,
+            bordered: true,
+            autofocus: true,
+            controls: true,
+            min: 0
+          }
+        },
+        {
+          field: 'poke.cooldowns.punishment',
+          label: '惩罚冷却（毫秒）',
+          component: 'InputNumber',
+          componentProps: {
+            defaultValue: 60000,
+            bordered: true,
+            autofocus: true,
+            controls: true,
+            min: 0
+          }
+        },
+        {
+          label: '戳一戳概率设置',
+          component: 'SOFT_GROUP_BEGIN'
+        },
+        {
+          field: 'poke.chances.mood_change',
+          label: '心情变化概率',
+          component: 'Slider',
+          componentProps: {
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.2
+          }
+        },
+        {
+          field: 'poke.chances.special_trigger',
+          label: '特效触发概率',
+          component: 'Slider',
+          componentProps: {
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.15
+          }
+        },
+        {
+          field: 'poke.chances.punishment',
+          label: '惩罚概率',
+          component: 'Slider',
+          componentProps: {
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.3
+          }
         },
         {
           label: 'AI配置',

@@ -57,7 +57,7 @@ const defaultConfig = {
     presence_penalty: 0.6,
     frequency_penalty: 0.6,
     // 新增配置项
-    triggerPrefix: "",  // 空字符串表示需要@机器人
+    triggerPrefix: "",
     historyLimit: 10,
     defaultPersona: "assistant",
     whitelist: {
@@ -68,10 +68,46 @@ const defaultConfig = {
     globalAIChance: 0.05,
     globalAICooldown: 300
   },
-  poke_priority: 500,
-  corepoke_priority: 500,
-  chuomaster: true,
-  imgdaili: true
+  // 新的戳一戳配置
+  poke: {
+    enabled: true,  // 总开关
+    priority: -5000,  // 优先级
+    
+    // 模块开关
+    modules: {
+      basic: true,          // 基础回复
+      mood: true,           // 心情系统
+      intimacy: true,       // 亲密度系统
+      achievement: true,    // 成就系统
+      special: true,        // 特殊效果
+      punishment: true,     // 惩罚系统
+      pokeback: true,       // 反戳系统
+      image: true,          // 图片发送
+      voice: true,          // 语音发送
+      master: true          // 主人保护
+    },
+    
+    // 功能配置
+    pokeback_enabled: true,  // 是否启用机器人戳回功能（无法戳时关闭）
+    image_chance: 0.3,       // 发送图片概率
+    voice_chance: 0.2,       // 发送语音概率
+    master_image: true,      // 戳主人时是否发送图片
+    master_punishment: true, // 是否惩罚戳主人的人
+    
+    // 冷却时间（毫秒）
+    cooldowns: {
+      interaction: 30000,    // 互动冷却
+      special_effect: 180000, // 特效冷却
+      punishment: 60000      // 惩罚冷却
+    },
+    
+    // 概率设置
+    chances: {
+      mood_change: 0.2,      // 心情变化概率
+      special_trigger: 0.15, // 特效触发概率
+      punishment: 0.3        // 惩罚概率
+    }
+  }
 };
 
 // 改进后的合并配置函数
@@ -203,4 +239,5 @@ for (let i in files) {
   apps[name] = ret[i].value[Object.keys(ret[i].value)[0]];
 }
 
-export { apps };
+// 导出配置和应用
+export { apps, finalConfig as config };
