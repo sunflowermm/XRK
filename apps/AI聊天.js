@@ -7,6 +7,7 @@ import FormData from 'form-data';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
+import plugin from '../../lib/plugins/plugin.js';
 
 const _path = process.cwd();
 
@@ -31,11 +32,6 @@ let personas = {};
 // 表情包类型
 const EMOTION_TYPES = ['开心', '惊讶', '伤心', '大笑', '害怕', '生气'];
 
-// 工具函数：生成随机范围数字
-function randomRange(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 export class XRKAIAssistant extends plugin {
   constructor() {
     super({
@@ -54,6 +50,7 @@ export class XRKAIAssistant extends plugin {
     
     this.config = 解析向日葵插件yaml();
     config = this.config;
+    this.chatStream = null;
   }
 
   /** 初始化 */
@@ -85,11 +82,17 @@ export class XRKAIAssistant extends plugin {
     // 加载人设
     personas = await this.loadPersonas();
     
+    // 获取聊天工作流
+    this.chatStream = this.getStream('XRKChat');
+    if (!this.chatStream) {
+      logger.warn('[XRK-AI] 聊天工作流未找到，使用降级模式');
+    }
+    
     // 加载定时任务
     await this.loadScheduledTasks();
     
     // 定期清理缓存
-    setInterval(() => this.cleanupCache(), 300000); // 5分钟
+    setInterval(() => this.cleanupCache(), 300000);
     
     logger.info('[XRK-AI] AI助手初始化完成');
   }
@@ -139,21 +142,6 @@ export class XRKAIAssistant extends plugin {
     }
     
     return false;
-  }
-
-  /** 加载人设 */
-  async loadPersonas() {
-    const personasMap = {};
-    try {
-      const files = await Bot.glob(path.join(PERSONAS_DIR, '*.txt'));
-      for (const file of files) {
-        const name = path.basename(file, '.txt');
-        personasMap[name] = await Bot.readFile(file, 'utf8');
-      }
-    } catch (error) {
-      logger.error(`[XRK-AI] 加载人设失败: ${error.message}`);
-    }
-    return personasMap;
   }
 
   /** 记录消息历史 */
@@ -216,10 +204,12 @@ export class XRKAIAssistant extends plugin {
       }
     };
     
+    // 1. 被@时触发
     if (e.atBot) {
       return isInWhitelist();
     }
     
+    // 2. 前缀触发
     const triggerPrefix = config.ai?.triggerPrefix;
     if (triggerPrefix !== undefined && triggerPrefix !== null && triggerPrefix !== '') {
       if (e.msg?.startsWith(triggerPrefix)) {
@@ -227,6 +217,7 @@ export class XRKAIAssistant extends plugin {
       }
     }
     
+    // 3. 全局AI触发
     if (!e.isGroup) return false;
     
     const globalWhitelist = (config.ai?.globalWhitelist || []).map(id => Number(id));
@@ -300,14 +291,31 @@ export class XRKAIAssistant extends plugin {
       }
       
       // 构建上下文
-      const context = await this.buildAIContext(e, persona, question, isGlobalTrigger);
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const botRole = await this.getBotRole(e);
       
-      // 使用工作流处理
-      const result = await this.callAIStream(
-        {
+      const context = {
+        e,
+        dateStr,
+        isGlobalTrigger,
+        botRole,
+        messageHistory,
+        getEmotionImage: this.getRandomEmotionImage.bind(this),
+        createReminder: this.createReminder.bind(this)
+      };
+      
+      // 使用工作流
+      if (this.chatStream) {
+        // 构建聊天上下文
+        const systemPrompt = this.chatStream.buildChatSystemPrompt(persona, context);
+        const messages = await this.buildChatContext(e, systemPrompt, question, isGlobalTrigger);
+        
+        // 调用AI
+        const aiConfig = {
           baseUrl: config.ai?.baseUrl,
           apiKey: config.ai?.apiKey,
-          model: config.ai?.chatModel,
+          model: config.ai?.chatModel || 'gpt-3.5-turbo',
           temperature: config.ai?.temperature || 0.8,
           max_tokens: config.ai?.max_tokens || 6000,
           top_p: config.ai?.top_p || 0.9,
@@ -315,144 +323,45 @@ export class XRKAIAssistant extends plugin {
             presence_penalty: config.ai?.presence_penalty || 0.6,
             frequency_penalty: config.ai?.frequency_penalty || 0.6
           }
-        },
-        'XRKChat',
-        context
-      );
-      
-      if (!result.success) {
-        if (isGlobalTrigger) {
-          logger.debug('[XRK-AI] 全局AI响应失败，静默处理');
-          return false;
+        };
+        
+        const response = await this.callAI(messages, aiConfig);
+        
+        if (!response) {
+          if (isGlobalTrigger) {
+            logger.debug('[XRK-AI] 全局AI响应失败，静默处理');
+            return false;
+          }
+          return true;
         }
-        await e.reply('抱歉，我现在有点不舒服...');
-        return true;
+        
+        // 使用工作流处理响应
+        await this.chatStream.processAndSend(response, context);
+      } else {
+        // 降级模式：直接处理
+        const messages = await this.buildChatContext(e, persona, question, isGlobalTrigger);
+        const response = await this.callAI(messages, {
+          baseUrl: config.ai?.baseUrl,
+          apiKey: config.ai?.apiKey,
+          model: config.ai?.chatModel || 'gpt-3.5-turbo'
+        });
+        
+        if (!response) {
+          if (isGlobalTrigger) return false;
+          return true;
+        }
+        
+        await e.reply(response);
       }
-
-      // 处理工作流结果
-      await this.processStreamResult(e, result);
-      return true;
       
+      return true;
     } catch (error) {
       logger.error(`[XRK-AI] AI处理失败: ${error.message}`);
       return false;
     }
   }
 
-  /** 构建AI上下文 */
-  async buildAIContext(e, persona, question, isGlobalTrigger) {
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-    const botRole = await this.getBotRole(e);
-    
-    const context = {
-      e,
-      dateStr,
-      isGlobalTrigger,
-      botRole,
-      messageHistory,
-      getRandomEmotionImage: this.getRandomEmotionImage.bind(this),
-      createReminder: this.createReminder.bind(this)
-    };
-    
-    // 构建消息历史
-    const history = [];
-    
-    if (e.isGroup) {
-      const msgHistory = messageHistory.get(e.group_id) || [];
-      
-      if (isGlobalTrigger) {
-        const recentMessages = msgHistory.slice(-15);
-        if (recentMessages.length > 0) {
-          history.push({
-            role: 'user',
-            content: `[群聊记录]\n${recentMessages.map(msg => 
-              `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
-            ).join('\n')}\n\n请对当前话题发表你的看法，要自然且有自己的观点。`
-          });
-        }
-      } else {
-        const currentIndex = msgHistory.findIndex(msg => msg.message_id === e.message_id);
-        let relevantHistory = [];
-        
-        if (currentIndex > 0) {
-          const historyCount = Math.min(config.ai?.historyLimit || 10, currentIndex);
-          relevantHistory = msgHistory.slice(Math.max(0, currentIndex - historyCount), currentIndex);
-        } else if (currentIndex === -1 && msgHistory.length > 0) {
-          relevantHistory = msgHistory.slice(-(config.ai?.historyLimit || 10));
-        }
-        
-        if (relevantHistory.length > 0) {
-          history.push({
-            role: 'user',
-            content: `[群聊记录]\n${relevantHistory.map(msg => 
-              `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
-            ).join('\n')}`
-          });
-        }
-        
-        const userInfo = e.sender?.card || e.sender?.nickname || '未知';
-        history.push({
-          role: 'user',
-          content: `[当前消息]\n${userInfo}(${e.user_id})[${e.message_id}]: ${question}`
-        });
-      }
-    } else {
-      const userInfo = e.sender?.nickname || '未知';
-      history.push({
-        role: 'user',
-        content: `${userInfo}(${e.user_id}): ${question}`
-      });
-    }
-    
-    context.history = history;
-    context.prompt = persona;
-    
-    return context;
-  }
-
-  /** 处理工作流结果 */
-  async processStreamResult(e, result) {
-    try {
-      const { segments } = result;
-      
-      for (let i = 0; i < segments.length; i++) {
-        const segment = segments[i];
-        
-        // 发送表情包
-        for (const action of segment.actions) {
-          if (action.type === 'emotion' && action.data.image) {
-            await e.reply(segment.image(action.data.image));
-            await Bot.sleep(300);
-          }
-        }
-        
-        // 发送文本和CQ码
-        if (segment.text || segment.cqSegments.length > 0) {
-          const msgParts = [];
-          
-          if (segment.text) {
-            msgParts.push(segment.text);
-          }
-          
-          msgParts.push(...segment.cqSegments);
-          
-          if (msgParts.length > 0) {
-            await e.reply(msgParts, Math.random() > 0.5);
-          }
-        }
-        
-        // 段落间延迟
-        if (i < segments.length - 1) {
-          await Bot.sleep(randomRange(800, 1500));
-        }
-      }
-    } catch (error) {
-      logger.error(`[XRK-AI] 处理工作流结果失败: ${error.message}`);
-    }
-  }
-
-  /** 处理消息内容（包含识图） */
+  /** 处理消息内容 */
   async processMessageContent(e) {
     let content = '';
     const message = e.message;
@@ -507,7 +416,7 @@ export class XRKAIAssistant extends plugin {
     }
   }
 
-  /** 处理图片（识图功能） */
+  /** 处理图片 */
   async processImage(imageUrl) {
     if (!imageUrl || !config.ai?.visionModel) {
       return '无法识别';
@@ -534,7 +443,11 @@ export class XRKAIAssistant extends plugin {
         }
       ];
       
-      const result = await this.callAI(messages, config.ai.visionModel);
+      const result = await this.callAI(messages, {
+        baseUrl: config.ai?.baseUrl,
+        apiKey: config.ai?.apiKey,
+        model: config.ai.visionModel
+      });
       return result || '识图失败';
       
     } catch (error) {
@@ -599,6 +512,66 @@ export class XRKAIAssistant extends plugin {
     }
   }
 
+  /** 构建聊天上下文 */
+  async buildChatContext(e, systemPrompt, question, isGlobalTrigger = false) {
+    const messages = [];
+    
+    if (typeof systemPrompt === 'string') {
+      messages.push({ role: 'system', content: systemPrompt });
+    } else {
+      messages.push(...systemPrompt);
+    }
+    
+    if (e.isGroup) {
+      const history = messageHistory.get(e.group_id) || [];
+      
+      if (isGlobalTrigger) {
+        const recentMessages = history.slice(-15);
+        if (recentMessages.length > 0) {
+          messages.push({
+            role: 'user',
+            content: `[群聊记录]\n${recentMessages.map(msg => 
+              `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
+            ).join('\n')}\n\n请对当前话题发表你的看法，要自然且有自己的观点。`
+          });
+        }
+      } else {
+        const currentIndex = history.findIndex(msg => msg.message_id === e.message_id);
+        let relevantHistory = [];
+        
+        if (currentIndex > 0) {
+          const historyCount = Math.min(config.ai?.historyLimit || 10, currentIndex);
+          relevantHistory = history.slice(Math.max(0, currentIndex - historyCount), currentIndex);
+        } else if (currentIndex === -1 && history.length > 0) {
+          relevantHistory = history.slice(-(config.ai?.historyLimit || 10));
+        }
+        
+        if (relevantHistory.length > 0) {
+          messages.push({
+            role: 'user',
+            content: `[群聊记录]\n${relevantHistory.map(msg => 
+              `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
+            ).join('\n')}`
+          });
+        }
+        
+        const userInfo = e.sender?.card || e.sender?.nickname || '未知';
+        messages.push({
+          role: 'user',
+          content: `[当前消息]\n${userInfo}(${e.user_id})[${e.message_id}]: ${question}`
+        });
+      }
+    } else {
+      const userInfo = e.sender?.nickname || '未知';
+      messages.push({
+        role: 'user',
+        content: `${userInfo}(${e.user_id}): ${question}`
+      });
+    }
+    
+    return messages;
+  }
+
   /** 获取机器人角色 */
   async getBotRole(e) {
     if (!e.isGroup) return '';
@@ -634,7 +607,7 @@ export class XRKAIAssistant extends plugin {
       
       if (reminderTime <= new Date()) {
         await e.reply('提醒时间必须在未来');
-        return;
+        return { success: false, error: '时间无效' };
       }
       
       const task = {
@@ -656,9 +629,16 @@ export class XRKAIAssistant extends plugin {
         await e.reply(segment.image(emotionImage));
       }
       await e.reply(`已设置提醒：${dateStr} ${timeStr} "${content}"`);
+      
+      return { 
+        success: true, 
+        task: task.id,
+        time: reminderTime
+      };
     } catch (error) {
       logger.error(`[XRK-AI] 创建提醒失败: ${error.message}`);
       await e.reply('设置提醒失败，请检查格式');
+      return { success: false, error: error.message };
     }
   }
 
@@ -723,10 +703,9 @@ export class XRKAIAssistant extends plugin {
 【功能说明】
 • 触发方式：@机器人、前缀触发
 • 全局AI：在白名单群自动参与聊天
+• 工作流：${this.chatStream ? '已加载' : '未加载'}
 • 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%
-• 冷却时间：${config.ai?.globalAICooldown || 300}秒
-• 表情回应：AI自主决定回应表情
-• 识图功能：发送图片时自动识别`;
+• 冷却时间：${config.ai?.globalAICooldown || 300}秒`;
     
     await e.reply(help);
     return true;
@@ -880,6 +859,7 @@ export class XRKAIAssistant extends plugin {
       `• 定时任务：${scheduledTasks.size}个`,
       `• 普通白名单群：${(config.ai?.whitelist?.groups || []).length}个`,
       `• 全局AI群：${(config.ai?.globalWhitelist || []).length}个`,
+      `• 工作流状态：${this.chatStream ? '正常' : '降级模式'}`,
       `• 触发前缀：${config.ai?.triggerPrefix || '无'}`,
       `• 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%`,
       `• 冷却时间：${config.ai?.globalAICooldown || 300}秒`,
@@ -889,6 +869,21 @@ export class XRKAIAssistant extends plugin {
     
     await e.reply(status.join('\n'));
     return true;
+  }
+
+  /** 加载人设 */
+  async loadPersonas() {
+    const personasMap = {};
+    try {
+      const files = await Bot.glob(path.join(PERSONAS_DIR, '*.txt'));
+      for (const file of files) {
+        const name = path.basename(file, '.txt');
+        personasMap[name] = await Bot.readFile(file, 'utf8');
+      }
+    } catch (error) {
+      logger.error(`[XRK-AI] 加载人设失败: ${error.message}`);
+    }
+    return personasMap;
   }
 
   /** 获取当前人设名 */
