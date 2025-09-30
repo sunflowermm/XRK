@@ -55,13 +55,12 @@ export class XRKAIAssistant extends plugin {
     
     this.config = 解析向日葵插件yaml();
     config = this.config;
-    
-    // 获取聊天工作流
-    this.chatStream = null;
   }
 
   /** 初始化 */
   async init() {
+    // 获取聊天工作流
+    this.chatStream = null;
     // 创建目录
     await Bot.mkdir(PERSONAS_DIR);
     await Bot.mkdir(TEMP_IMAGE_DIR);
@@ -91,9 +90,6 @@ export class XRKAIAssistant extends plugin {
     
     // 加载定时任务
     await this.loadScheduledTasks();
-    
-    // 加载工作流
-    await StreamLoader.load();
     this.chatStream = this.getStream('XRKChat');
     
     // 定期清理缓存
