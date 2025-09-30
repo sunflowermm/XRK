@@ -16,7 +16,7 @@ export class ExamplePlugin extends plugin {
       name: 'ai',
       dsc: '简单开发示例',
       event: 'message',
-      priority: -1000,
+      priority: -10000,
       rule: [
         {
           reg: '.*',
@@ -48,13 +48,13 @@ export class ExamplePlugin extends plugin {
   async activateAi(e) {
     if (!e.isMaster) return;
     this.updateAiStatus(true);
-    await e.reply('向日葵AI已开启');
+    await e.reply('向日葵词库AI已开启');
   }
 
   async deactivateAi(e) {
     if (!e.isMaster) return;
     this.updateAiStatus(false);
-    await e.reply('向日葵AI已关闭');
+    await e.reply('向日葵词库AI已关闭');
   }
 
   async aiHandler(e) {
