@@ -1,329 +1,186 @@
 import path from 'path';
-import fs from 'fs';
+import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
 
 const _path = process.cwd();
-const TEMP_IMAGE_DIR = path.join(_path, 'data/temp/ai_images');
-
-// 表情包映射
-const EMOJI_REACTIONS = {
-  '开心': ['4', '14', '21', '28', '76', '79', '99', '182', '201', '290'],
-  '惊讶': ['26', '32', '97', '180', '268', '289'],
-  '伤心': ['5', '9', '106', '111', '173', '174'],
-  '大笑': ['4', '12', '28', '101', '182', '281'],
-  '害怕': ['26', '27', '41', '96'],
-  '喜欢': ['42', '63', '85', '116', '122', '319'],
-  '爱心': ['66', '122', '319'],
-  '生气': ['8', '23', '39', '86', '179', '265']
-};
 
 // 全局存储
-const messageHistory = new Map();
-const globalAIState = new Map();
+const groupPersonas = new Map();
 const userCache = new Map();
-let emotionImages = {};
 
-export default class XRKChatStream extends StreamBase {
+// 目录路径
+const PERSONAS_DIR = path.join(_path, 'plugins/XRK/config/ai-assistant/personas');
+const EMOTIONS_DIR = path.join(_path, 'plugins/XRK/config/ai-assistant');
+
+// 配置和人设
+let config = null;
+let personas = {};
+
+export class XRKAIAssistant extends plugin {
   constructor() {
     super({
-      name: 'XRKChat',
-      description: '向日葵AI聊天工作流',
-      version: '2.0.0',
-      author: 'XRK',
-      enabled: true,
-      config: {
-        maxRetries: 2,
-        retryDelay: 500,
-        timeout: 5000
-      }
+      name: 'XRK-AI助手',
+      dsc: '智能AI助手，支持群管理、识图等',
+      event: 'message',
+      priority: 99999,
+      rule: [
+        {
+          reg: '.*',
+          fnc: 'handleMessage',
+          log: false
+        }
+      ]
     });
     
-    this.initRules();
-    this.loadEmotionImages();
+    this.config = 解析向日葵插件yaml();
+    config = this.config;
+    this.chatStream = null;
   }
 
-  /** 加载表情包图片 */
-  async loadEmotionImages() {
-    const EMOTIONS_DIR = path.join(_path, 'plugins/XRK/config/ai-assistant');
-    const EMOTION_TYPES = ['开心', '惊讶', '伤心', '大笑', '害怕', '生气'];
+  /** 初始化 */
+  async init() {
+    // 创建目录
+    await Bot.mkdir(PERSONAS_DIR);
+    await Bot.mkdir(EMOTIONS_DIR);
     
+    // 创建表情包目录
+    const EMOTION_TYPES = ['开心', '惊讶', '伤心', '大笑', '害怕', '生气'];
     for (const emotion of EMOTION_TYPES) {
       const emotionDir = path.join(EMOTIONS_DIR, emotion);
-      try {
-        const files = await fs.promises.readdir(emotionDir);
-        const imageFiles = files.filter(file => 
-          /\.(jpg|jpeg|png|gif)$/i.test(file)
-        );
-        emotionImages[emotion] = imageFiles.map(file => 
-          path.join(emotionDir, file)
-        );
-      } catch (err) {
-        emotionImages[emotion] = [];
-      }
+      await Bot.mkdir(emotionDir);
     }
+    
+    // 创建默认人设
+    const defaultPersonaPath = path.join(PERSONAS_DIR, 'assistant.txt');
+    if (!await Bot.fileExists(defaultPersonaPath)) {
+      await Bot.writeFile(defaultPersonaPath, `我是${Bot.nickname}，一个智能AI助手。
+我会认真观察群聊，适时发表评论和互动。
+喜欢用表情回应别人的消息，也会戳一戳活跃气氛。
+对不同的人有不同的态度，记得每个人的名字。
+会根据聊天氛围选择合适的表情和互动方式。`);
+    }
+    
+    // 加载人设
+    personas = await this.loadPersonas();
+    
+    // 获取聊天工作流
+    this.chatStream = this.getStream('XRKChat');
+    
+    // 定期清理缓存
+    setInterval(() => this.cleanupCache(), 300000); // 5分钟
+    
+    logger.info('[XRK-AI] AI助手初始化完成');
   }
 
-  /** 获取随机表情图片 */
-  getRandomEmotionImage(emotion) {
-    const images = emotionImages[emotion];
-    if (!images || images.length === 0) return null;
-    return images[Math.floor(Math.random() * images.length)];
+  /** 加载人设 */
+  async loadPersonas() {
+    const personasMap = {};
+    try {
+      const files = await Bot.glob(path.join(PERSONAS_DIR, '*.txt'));
+      for (const file of files) {
+        const name = path.basename(file, '.txt');
+        personasMap[name] = await Bot.readFile(file, 'utf8');
+      }
+    } catch (error) {
+      logger.error(`[XRK-AI] 加载人设失败: ${error.message}`);
+    }
+    return personasMap;
   }
 
-  /** 判断是否触发AI */
-  async shouldTriggerAI(e, config) {
-    // 记录消息历史
-    this.recordMessageHistory(e);
-    
-    // 检查是否在白名单中
-    const isInWhitelist = () => {
-      if (e.isGroup) {
-        const groupWhitelist = (config.ai?.whitelist?.groups || []).map(id => Number(id));
-        return groupWhitelist.includes(Number(e.group_id));
-      } else {
-        const userWhitelist = (config.ai?.whitelist?.users || []).map(id => Number(id));
-        return userWhitelist.includes(Number(e.user_id));
+  /** 主消息处理器 */
+  async handleMessage(e) {
+    try {
+      // 管理命令
+      if (e.isMaster && e.msg?.startsWith('#AI')) {
+        return await this.handleAdminCommands(e);
       }
-    };
-    
-    // 1. 被@时触发
-    if (e.atBot) {
-      return isInWhitelist();
-    }
-    
-    // 2. 前缀触发
-    const triggerPrefix = config.ai?.triggerPrefix;
-    if (triggerPrefix !== undefined && triggerPrefix !== null && triggerPrefix !== '') {
-      if (e.msg?.startsWith(triggerPrefix)) {
-        return isInWhitelist();
+
+      // 通过工作流判断是否触发AI
+      if (!this.chatStream) {
+        this.chatStream = this.getStream('XRKChat');
+        if (!this.chatStream) {
+          logger.error('[XRK-AI] 聊天工作流未加载');
+          return false;
+        }
       }
+
+      // 准备上下文
+      const groupId = e.group_id || `private_${e.user_id}`;
+      const persona = this.getCurrentPersona(groupId);
+      
+      const context = {
+        e,
+        config,
+        persona,
+        personas,
+        groupPersonas,
+        userCache,
+        EMOTIONS_DIR,
+        groupId,
+        isMaster: e.isMaster,
+        getBotRole: () => this.getBotRole(e)
+      };
+
+      // 使用工作流处理消息
+      const shouldTrigger = await this.chatStream.shouldTriggerAI(e, config);
+      if (!shouldTrigger) {
+        return false;
+      }
+
+      // 调用AI并处理响应
+      const result = await this.processWithStream(e, context);
+      return result;
+      
+    } catch (error) {
+      logger.error(`[XRK-AI] 消息处理错误: ${error.message}`);
     }
     
-    // 3. 全局AI触发
-    if (!e.isGroup) return false;
-    
-    const globalWhitelist = (config.ai?.globalWhitelist || []).map(id => Number(id));
-    const groupIdNum = Number(e.group_id);
-    
-    if (!globalWhitelist.includes(groupIdNum)) {
-      return false;
-    }
-    
-    // 全局AI状态管理
-    const groupId = e.group_id;
-    const state = globalAIState.get(groupId) || { 
-      lastTrigger: 0, 
-      messageCount: 0,
-      lastMessageTime: 0,
-      activeUsers: new Set()
-    };
-    
-    const now = Date.now();
-    
-    // 重置计数
-    if (now - state.lastMessageTime > 60000) {
-      state.messageCount = 1;
-      state.activeUsers.clear();
-      state.activeUsers.add(e.user_id);
-    } else {
-      state.messageCount++;
-      state.activeUsers.add(e.user_id);
-    }
-    state.lastMessageTime = now;
-    
-    // 触发条件
-    const cooldown = (config.ai?.globalAICooldown || 300) * 1000;
-    const chance = config.ai?.globalAIChance || 0.05;
-    
-    const canTrigger = now - state.lastTrigger > cooldown && 
-                       (state.messageCount >= 3 && state.activeUsers.size >= 2 || state.messageCount >= 8);
-    
-    if (canTrigger && Math.random() < chance) {
-      state.lastTrigger = now;
-      state.messageCount = 0;
-      state.activeUsers.clear();
-      globalAIState.set(groupId, state);
-      logger.info(`[XRK-AI] 全局AI触发 - 群:${groupId}`);
-      return true;
-    }
-    
-    globalAIState.set(groupId, state);
     return false;
   }
 
-  /** 记录消息历史 */
-  recordMessageHistory(e) {
-    if (!e.isGroup) return;
-    
+  /** 使用工作流处理消息 */
+  async processWithStream(e, context) {
     try {
-      const groupId = e.group_id;
-      if (!messageHistory.has(groupId)) {
-        messageHistory.set(groupId, []);
+      // 构建AI消息
+      const aiContext = await this.chatStream.buildAIContext(e, context);
+      
+      // 调用AI
+      const aiResult = await this.callAIStream(
+        {
+          baseUrl: config.ai?.baseUrl,
+          apiKey: config.ai?.apiKey,
+          model: config.ai?.chatModel || 'gpt-3.5-turbo',
+          temperature: config.ai?.temperature || 0.8,
+          max_tokens: config.ai?.max_tokens || 6000,
+          top_p: config.ai?.top_p || 0.9,
+          presence_penalty: config.ai?.presence_penalty || 0.6,
+          frequency_penalty: config.ai?.frequency_penalty || 0.6
+        },
+        this.chatStream,
+        aiContext.systemPrompt,
+        {
+          e,
+          question: aiContext.question,
+          history: aiContext.history,
+          ...context
+        }
+      );
+
+      if (!aiResult.success) {
+        if (aiContext.isGlobalTrigger) {
+          logger.debug('[XRK-AI] 全局AI响应失败，静默处理');
+          return false;
+        }
+        return true;
       }
+
+      // 处理AI响应
+      await this.chatStream.processResponse(e, aiResult.response, context);
+      return true;
       
-      const history = messageHistory.get(groupId);
-      let cqMessage = e.raw_message || '';
-      
-      if (e.message && Array.isArray(e.message)) {
-        cqMessage = e.message.map(seg => {
-          switch (seg.type) {
-            case 'text':
-              return seg.text;
-            case 'image':
-              return `[图片]`;
-            case 'at':
-              return `[CQ:at,qq=${seg.qq}]`;
-            case 'reply':
-              return `[CQ:reply,id=${seg.id}]`;
-            default:
-              return '';
-          }
-        }).join('');
-      }
-      
-      history.push({
-        user_id: e.user_id,
-        nickname: e.sender?.card || e.sender?.nickname || '未知',
-        role: e.sender?.role || 'member',
-        message: cqMessage,
-        message_id: e.message_id,
-        time: Date.now(),
-        hasImage: e.img?.length > 0
-      });
-      
-      if (history.length > 30) {
-        history.shift();
-      }
     } catch (error) {
-      logger.error(`[XRK-AI] 记录消息历史失败: ${error.message}`);
+      logger.error(`[XRK-AI] 工作流处理失败: ${error.message}`);
+      return false;
     }
-  }
-
-  /** 构建AI上下文 */
-  async buildAIContext(e, context) {
-    const groupId = e.group_id || `private_${e.user_id}`;
-    const isGlobalTrigger = !e.atBot && 
-      (context.config.ai?.triggerPrefix === undefined || 
-       context.config.ai?.triggerPrefix === null || 
-       context.config.ai?.triggerPrefix === '' || 
-       !e.msg?.startsWith(context.config.ai.triggerPrefix));
-    
-    // 处理消息内容
-    let question = await this.processMessageContent(e, context);
-    
-    // 构建系统提示
-    const botRole = await context.getBotRole();
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-    
-    const systemPrompt = this.buildChatSystemPrompt(context.persona, {
-      e,
-      dateStr,
-      isGlobalTrigger,
-      botRole
-    });
-    
-    // 构建历史消息
-    const history = [];
-    if (e.isGroup) {
-      const historyData = messageHistory.get(e.group_id) || [];
-      
-      if (isGlobalTrigger) {
-        const recentMessages = historyData.slice(-15);
-        if (recentMessages.length > 0) {
-          history.push({
-            role: 'user',
-            content: `[群聊记录]\n${recentMessages.map(msg => 
-              `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
-            ).join('\n')}\n\n请对当前话题发表你的看法，要自然且有自己的观点。`
-          });
-        }
-      } else {
-        const relevantHistory = historyData.slice(-(context.config.ai?.historyLimit || 10));
-        if (relevantHistory.length > 0) {
-          history.push({
-            role: 'user',
-            content: `[群聊记录]\n${relevantHistory.map(msg => 
-              `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
-            ).join('\n')}`
-          });
-        }
-      }
-    }
-    
-    return {
-      systemPrompt,
-      question,
-      history,
-      isGlobalTrigger
-    };
-  }
-
-  /** 处理消息内容 */
-  async processMessageContent(e, context) {
-    let content = '';
-    const message = e.message;
-    
-    if (!Array.isArray(message)) {
-      return e.msg || '';
-    }
-    
-    try {
-      // 处理回复
-      if (e.source && e.getReply) {
-        try {
-          const reply = await e.getReply();
-          if (reply) {
-            const nickname = reply.sender?.card || reply.sender?.nickname || '未知';
-            content += `[回复${nickname}的"${reply.raw_message.substring(0, 30)}..."] `;
-          }
-        } catch {}
-      }
-      
-      // 处理消息段
-      for (const seg of message) {
-        switch (seg.type) {
-          case 'text':
-            content += seg.text;
-            break;
-          case 'at':
-            if (seg.qq != e.self_id) {
-              try {
-                const member = e.group?.pickMember(seg.qq);
-                const info = await member?.getInfo();
-                const nickname = info?.card || info?.nickname || seg.qq;
-                content += `@${nickname} `;
-              } catch {
-                content += `@${seg.qq} `;
-              }
-            }
-            break;
-          case 'image':
-            const desc = await this.processImage(seg.url || seg.file, context);
-            content += `[图片:${desc}] `;
-            break;
-        }
-      }
-      
-      // 清理触发前缀
-      if (context.config.ai?.triggerPrefix && context.config.ai.triggerPrefix !== '') {
-        content = content.replace(new RegExp(`^${context.config.ai.triggerPrefix}`), '');
-      }
-      
-      return content.trim();
-    } catch (error) {
-      logger.error(`[XRK-AI] 处理消息内容失败: ${error.message}`);
-      return e.msg || '';
-    }
-  }
-
-  /** 处理图片 */
-  async processImage(imageUrl, context) {
-    if (!imageUrl || !context.config.ai?.visionModel) {
-      return '无法识别';
-    }
-    
-    // 简化的图片识别逻辑
-    return '图片内容';
   }
 
   /** 获取机器人角色 */
@@ -349,564 +206,199 @@ export default class XRKChatStream extends StreamBase {
     }
   }
 
-  /** 检查权限 */
-  async checkPermission(e, permission) {
-    if (!e.isGroup) return false;
-    if (e.isMaster) return true;
+  /** 管理命令处理 */
+  async handleAdminCommands(e) {
+    const msg = e.msg;
     
-    const role = await this.getBotRole(e);
-    
-    switch (permission) {
-      case 'mute':
-      case 'admin':
-        return role === '群主' || role === '管理员';
-      case 'owner':
-        return role === '群主';
-      default:
-        return false;
+    if (msg === '#AI帮助') {
+      return await this.showHelp(e);
     }
+    else if (/^#AI切换人设\s*(.+)$/.test(msg)) {
+      const persona = msg.match(/^#AI切换人设\s*(.+)$/)[1];
+      return await this.switchPersona(e, persona);
+    }
+    else if (msg === '#AI当前人设') {
+      return await this.showCurrentPersona(e);
+    }
+    else if (msg === '#AI人设列表') {
+      return await this.listPersonas(e);
+    }
+    else if (/^#AI添加全局\s*(\d+)?$/.test(msg)) {
+      const groupId = msg.match(/(\d+)$/)?.[1] || e.group_id;
+      return await this.addGlobalWhitelist(e, groupId);
+    }
+    else if (/^#AI移除全局\s*(\d+)?$/.test(msg)) {
+      const groupId = msg.match(/(\d+)$/)?.[1] || e.group_id;
+      return await this.removeGlobalWhitelist(e, groupId);
+    }
+    else if (msg === '#AI查看全局') {
+      return await this.showGlobalWhitelist(e);
+    }
+    else if (msg === '#AI重载人设') {
+      personas = await this.loadPersonas();
+      await this.chatStream?.loadEmotionImages();
+      await e.reply('人设和表情包已重新加载');
+      return true;
+    }
+    else if (msg === '#AI状态') {
+      return await this.showStatus(e);
+    }
+    
+    return false;
   }
 
-  /** 处理AI响应 */
-  async processResponse(e, response, context) {
-    try {
-      // 使用竖线分割响应
-      const segments = response.split('|').map(s => s.trim()).filter(s => s).slice(0, 2);
-      
-      // 统计表情包数量
-      let emotionSent = false;
-      
-      for (let i = 0; i < segments.length; i++) {
-        const responseSegment = segments[i];
-        
-        // 解析响应
-        const result = await this.process(responseSegment, { 
-          e, 
-          ...context,
-          getEmotionImage: (emotion) => this.getRandomEmotionImage(emotion),
-          checkPermission: (perm) => this.checkPermission(e, perm),
-          getBotRole: () => this.getBotRole(e)
-        });
-        
-        // 发送表情包
-        if (!emotionSent && result.executed) {
-          const emotionResult = result.executed.find(r => r.result?.action === 'emotion');
-          if (emotionResult && emotionResult.result.image) {
-            await e.reply(segment.image(emotionResult.result.image));
-            emotionSent = true;
-            await Bot.sleep(300);
-          }
-        }
-        
-        // 构建消息段
-        const msgSegments = [];
-        
-        // 处理文本和CQ码
-        if (result.processedResponse) {
-          const parts = result.processedResponse.split(/(\[CQ:[^\]]+\])/);
-          for (const part of parts) {
-            if (part.startsWith('[CQ:')) {
-              const cqSegment = await this.parseCQCode(part, e, context);
-              if (cqSegment) {
-                msgSegments.push(cqSegment);
-              }
-            } else if (part) {
-              msgSegments.push(part);
-            }
-          }
-        }
-        
-        // 发送消息
-        if (msgSegments.length > 0) {
-          await e.reply(msgSegments, Math.random() > 0.5);
-        }
-        
-        // 执行其他功能
-        for (const exec of result.executed || []) {
-          if (exec.result?.action && exec.result.action !== 'emotion') {
-            // 功能已在handler中执行
-          }
-        }
-        
-        // 延迟到下一个segment
-        if (i < segments.length - 1) {
-          await Bot.sleep(this.randomRange(800, 1500));
-        }
-      }
-    } catch (error) {
-      logger.error(`[XRK-AI] 处理AI响应失败: ${error.message}`);
-    }
+  /** 显示帮助 */
+  async showHelp(e) {
+    const help = `【AI助手管理命令】
+#AI帮助 - 显示此帮助
+#AI切换人设 <人设名> - 切换人设
+#AI当前人设 - 查看当前人设
+#AI人设列表 - 查看可用人设
+#AI添加全局 [群号] - 添加全局AI
+#AI移除全局 [群号] - 移除全局AI
+#AI查看全局 - 查看全局AI列表
+#AI重载人设 - 重新加载人设和表情包
+#AI状态 - 查看运行状态
+
+【功能说明】
+• 触发方式：@机器人、前缀触发
+• 全局AI：在白名单群自动参与聊天
+• 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%
+• 冷却时间：${config.ai?.globalAICooldown || 300}秒
+• 表情回应：AI自主决定回应表情
+• 识图功能：发送图片时自动识别`;
+    
+    await e.reply(help);
+    return true;
   }
 
-  /** 解析CQ码 */
-  async parseCQCode(cqCode, e, context) {
-    const match = cqCode.match(/\[CQ:(\w+)(?:,([^\]]+))?\]/);
-    if (!match) return null;
-    
-    const [, type, params] = match;
-    const paramObj = {};
-    
-    if (params) {
-      params.split(',').forEach(p => {
-        const [key, value] = p.split('=');
-        paramObj[key] = value;
-      });
+  /** 切换人设 */
+  async switchPersona(e, personaName) {
+    if (!personas[personaName]) {
+      await e.reply(`未找到人设"${personaName}"\n可用：${Object.keys(personas).join('、')}`);
+      return true;
     }
     
-    switch (type) {
-      case 'at':
-        return segment.at(paramObj.qq);
-      case 'reply':
-        return segment.reply(paramObj.id);
-      case 'image':
-        return segment.image(paramObj.file);
-      default:
-        return null;
-    }
+    const groupId = e.group_id || `private_${e.user_id}`;
+    groupPersonas.set(groupId, personaName);
+    await e.reply(`已切换到人设"${personaName}"`);
+    return true;
   }
 
-  /** 随机数生成 */
-  randomRange(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  /** 初始化规则 */
-  initRules() {
-    // 基础互动规则
-    this.addRule({
-      name: 'at',
-      group: 'interaction',
-      enabled: true,
-      reg: /\[CQ:at,qq=(\d+)\]/gi,
-      regPrompt: '[CQ:at,qq=QQ号] - @某人',
-      priority: 100,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const qq = result.params[0];
-        try {
-          const member = e.group.pickMember(qq);
-          await member.getInfo();
-          return { type: 'at', qq };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    this.addRule({
-      name: 'poke',
-      group: 'interaction',
-      enabled: true,
-      reg: /\[CQ:poke,qq=(\d+)\]/gi,
-      regPrompt: '[CQ:poke,qq=QQ号] - 戳一戳某人',
-      priority: 90,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const qq = result.params[0];
-        try {
-          await e.group.pokeMember(qq);
-          return { action: 'poke', target: qq };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    this.addRule({
-      name: 'reply',
-      group: 'interaction',
-      enabled: true,
-      reg: /\[CQ:reply,id=([^\]]+)\]/gi,
-      regPrompt: '[CQ:reply,id=消息ID] - 回复消息',
-      priority: 95,
-      handler: async (result, context) => {
-        const msgId = result.params[0];
-        return { type: 'reply', id: msgId };
-      }
-    });
-
-    // 表情回应规则
-    this.addRule({
-      name: 'emojiReaction',
-      group: 'emotion',
-      enabled: true,
-      reg: /\[回应:([^:]+):([^\]]+)\]/gi,
-      regPrompt: '[回应:消息ID:表情类型] - 表情回应',
-      priority: 80,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const [msgId, emojiType] = result.params;
-        const emojiIds = EMOJI_REACTIONS[emojiType];
-        if (emojiIds) {
-          const emojiId = emojiIds[Math.floor(Math.random() * emojiIds.length)];
-          await e.group.setEmojiLike(msgId, emojiId);
-          return { action: 'emoji', msgId, emoji: emojiId };
-        }
-        return null;
-      }
-    });
-
-    // 表情包规则
-    this.addRule({
-      name: 'emotion',
-      group: 'emotion',
-      enabled: true,
-      reg: /\[(开心|惊讶|伤心|大笑|害怕|生气)\]/gi,
-      regPrompt: '表情包标记',
-      priority: 20,
-      handler: async (result, context) => {
-        const emotion = result.params[0];
-        
-        if (context.getEmotionImage) {
-          const imagePath = context.getEmotionImage(emotion);
-          if (imagePath) {
-            return { action: 'emotion', type: emotion, image: imagePath };
-          }
-        }
-        return null;
-      }
-    });
-
-    // 点赞规则
-    this.addRule({
-      name: 'thumbUp',
-      group: 'interaction',
-      enabled: true,
-      reg: /\[点赞:(\d+):(\d+)\]/gi,
-      regPrompt: '[点赞:QQ号:次数] - 给某人点赞',
-      priority: 70,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const [qq, count] = result.params;
-        try {
-          const thumbCount = Math.min(parseInt(count) || 1, 50);
-          await e.group.pickMember(qq).thumbUp(thumbCount);
-          return { action: 'thumbUp', target: qq, count: thumbCount };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 签到规则
-    this.addRule({
-      name: 'sign',
-      group: 'action',
-      enabled: true,
-      reg: /\[签到\]/gi,
-      regPrompt: '[签到] - 群签到',
-      priority: 60,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        try {
-          await e.group.sign();
-          return { action: 'sign' };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 管理功能规则 - 禁言
-    this.addRule({
-      name: 'mute',
-      group: 'admin',
-      enabled: true,
-      reg: /\[禁言:(\d+):(\d+)\]/gi,
-      regPrompt: '[禁言:QQ号:秒数] - 禁言某人',
-      priority: 50,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const hasPermission = await context.checkPermission?.('mute');
-        if (!hasPermission) return null;
-        
-        const [qq, seconds] = result.params;
-        try {
-          await e.group.muteMember(qq, parseInt(seconds));
-          return { action: 'mute', target: qq, duration: seconds };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 管理功能规则 - 解禁
-    this.addRule({
-      name: 'unmute',
-      group: 'admin',
-      enabled: true,
-      reg: /\[解禁:(\d+)\]/gi,
-      regPrompt: '[解禁:QQ号] - 解除禁言',
-      priority: 49,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const hasPermission = await context.checkPermission?.('mute');
-        if (!hasPermission) return null;
-        
-        const qq = result.params[0];
-        try {
-          await e.group.muteMember(qq, 0);
-          return { action: 'unmute', target: qq };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 精华消息规则
-    this.addRule({
-      name: 'essence',
-      group: 'admin',
-      enabled: true,
-      reg: /\[精华:([^\]]+)\]/gi,
-      regPrompt: '[精华:消息ID] - 设置精华消息',
-      priority: 48,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const hasPermission = await context.checkPermission?.('admin');
-        if (!hasPermission) return null;
-        
-        const msgId = result.params[0];
-        try {
-          await e.group.setEssence(msgId);
-          return { action: 'essence', msgId };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 群公告规则
-    this.addRule({
-      name: 'notice',
-      group: 'admin',
-      enabled: true,
-      reg: /\[公告:([^\]]+)\]/gi,
-      regPrompt: '[公告:内容] - 发布群公告',
-      priority: 47,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const hasPermission = await context.checkPermission?.('admin');
-        if (!hasPermission) return null;
-        
-        const content = result.params[0];
-        try {
-          await e.group.sendNotice(content);
-          return { action: 'notice', content };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 全员禁言规则
-    this.addRule({
-      name: 'muteAll',
-      group: 'admin',
-      enabled: true,
-      reg: /\[全员禁言\]/gi,
-      regPrompt: '[全员禁言] - 开启全员禁言',
-      priority: 46,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const hasPermission = await context.checkPermission?.('admin');
-        if (!hasPermission) return null;
-        
-        try {
-          await e.group.muteAll(true);
-          return { action: 'muteAll' };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 解除全员禁言规则
-    this.addRule({
-      name: 'unmuteAll',
-      group: 'admin',
-      enabled: true,
-      reg: /\[解除全员禁言\]/gi,
-      regPrompt: '[解除全员禁言] - 解除全员禁言',
-      priority: 45,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const hasPermission = await context.checkPermission?.('admin');
-        if (!hasPermission) return null;
-        
-        try {
-          await e.group.muteAll(false);
-          return { action: 'unmuteAll' };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 踢人规则
-    this.addRule({
-      name: 'kick',
-      group: 'admin',
-      enabled: true,
-      reg: /\[踢出:(\d+)\]/gi,
-      regPrompt: '[踢出:QQ号] - 踢出群成员',
-      priority: 44,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const hasPermission = await context.checkPermission?.('admin');
-        if (!hasPermission) return null;
-        
-        const qq = result.params[0];
-        try {
-          await e.group.kickMember(qq);
-          return { action: 'kick', target: qq };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 设置头衔规则
-    this.addRule({
-      name: 'setTitle',
-      group: 'admin',
-      enabled: true,
-      reg: /\[头衔:(\d+):([^\]]+)\]/gi,
-      regPrompt: '[头衔:QQ号:头衔内容] - 设置群头衔',
-      priority: 43,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const hasPermission = await context.checkPermission?.('owner');
-        if (!hasPermission) return null;
-        
-        const [qq, title] = result.params;
-        try {
-          await e.group.setTitle(qq, title);
-          return { action: 'setTitle', target: qq, title };
-        } catch {
-          return null;
-        }
-      }
-    });
-
-    // 撤回消息规则
-    this.addRule({
-      name: 'recall',
-      group: 'admin',
-      enabled: true,
-      reg: /\[撤回:([^\]]+)\]/gi,
-      regPrompt: '[撤回:消息ID] - 撤回消息',
-      priority: 42,
-      handler: async (result, context) => {
-        const { e } = context;
-        if (!e.isGroup) return null;
-        
-        const msgId = result.params[0];
-        try {
-          await e.group.recallMsg(msgId);
-          return { action: 'recall', msgId };
-        } catch {
-          return null;
-        }
-      }
-    });
-  }
-
-  /** 构建聊天系统提示词 */
-  buildChatSystemPrompt(persona, context = {}) {
-    const { e, dateStr, isGlobalTrigger } = context;
-    const botRole = context.botRole || '成员';
+  /** 显示当前人设 */
+  async showCurrentPersona(e) {
+    const groupId = e.group_id || `private_${e.user_id}`;
+    const personaName = this.getCurrentPersonaName(groupId);
+    const content = personas[personaName];
     
-    let basePrompt = `【人设设定】
-${persona}
+    await e.reply(`当前人设：${personaName}\n\n${content.substring(0, 100)}...`);
+    return true;
+  }
 
-【身份信息】
-名字：${Bot.nickname}
-QQ号：${e.self_id}
-${e.isGroup ? `群名：${e.group?.group_name || '未知'}
-群号：${e.group_id}
-身份：${botRole}` : ''}
+  /** 人设列表 */
+  async listPersonas(e) {
+    const list = Object.keys(personas).map(name => 
+      `【${name}】\n${personas[name].substring(0, 50)}...`
+    ).join('\n\n');
+    
+    await e.reply(`可用人设列表：\n\n${list}`);
+    return true;
+  }
 
-【时间信息】
-当前时间：${dateStr}
-
-【触发方式】
-${isGlobalTrigger ? '观察群聊后主动发言' : '被召唤回复'}
-
-【基础规则】
-1. 你是一个真实的QQ用户，不是AI助手
-2. 说话要自然、简洁、有个性
-3. 最多使用一个竖线分隔符(|)，也就是最多发送两条消息
-4. 每条消息不要太长，像正常聊天一样
-5. 适当使用表情包和互动功能
-
-【表情包系统】
-在文字中插入以下标记来发送表情包（一次对话只能使用一个表情包）：
-[开心] [惊讶] [伤心] [大笑] [害怕] [生气]
-
-【互动功能】
-[CQ:at,qq=QQ号] - @某人（确保QQ号存在）
-[CQ:poke,qq=QQ号] - 戳一戳某人
-[CQ:reply,id=消息ID] - 回复某条消息
-[回应:消息ID:表情类型] - 给消息添加表情回应（开心/惊讶/伤心/大笑/害怕/喜欢/爱心/生气）
-[点赞:QQ号:次数] - 给某人点赞（1-50次）
-[签到] - 执行群签到`;
-
-    // 添加管理功能（如果有权限）
-    if (botRole === '群主' || botRole === '管理员') {
-      basePrompt += `
-
-【管理功能】
-[禁言:QQ号:秒数] - 禁言某人（最多2592000秒/30天）
-[解禁:QQ号] - 解除禁言
-[精华:消息ID] - 设置精华消息
-[公告:内容] - 发布群公告
-[全员禁言] - 开启全员禁言
-[解除全员禁言] - 解除全员禁言
-[踢出:QQ号] - 踢出群成员
-[撤回:消息ID] - 撤回消息`;
+  /** 添加全局AI */
+  async addGlobalWhitelist(e, groupId) {
+    if (!groupId || groupId === 'undefined') {
+      await e.reply('请指定群号或在群内使用');
+      return true;
     }
-
-    if (botRole === '群主') {
-      basePrompt += `
-[头衔:QQ号:头衔内容] - 设置群头衔`;
+    
+    const cfg = 解析向日葵插件yaml();
+    if (!cfg.ai) cfg.ai = {};
+    if (!cfg.ai.globalWhitelist) cfg.ai.globalWhitelist = [];
+    
+    const gid = Number(groupId);
+    if (!cfg.ai.globalWhitelist.includes(gid)) {
+      cfg.ai.globalWhitelist.push(gid);
+      await 保存yaml(path.join(_path, 'data/xrkconfig/config.yaml'), cfg);
+      config = cfg;
+      await e.reply(`已添加群${gid}到全局AI白名单`);
+    } else {
+      await e.reply(`群${gid}已在白名单中`);
     }
+    return true;
+  }
 
-    basePrompt += `
+  /** 移除全局AI */
+  async removeGlobalWhitelist(e, groupId) {
+    if (!groupId || groupId === 'undefined') {
+      await e.reply('请指定群号或在群内使用');
+      return true;
+    }
+    
+    const cfg = 解析向日葵插件yaml();
+    if (cfg.ai?.globalWhitelist) {
+      const gid = Number(groupId);
+      cfg.ai.globalWhitelist = cfg.ai.globalWhitelist.filter(g => g !== gid);
+      await 保存yaml(path.join(_path, 'data/xrkconfig/config.yaml'), cfg);
+      config = cfg;
+      await e.reply(`已移除群${gid}的全局AI`);
+    }
+    return true;
+  }
 
-【重要限制】
-1. 每次回复最多只能发一个表情包
-2. 最多使用一个竖线(|)分隔
-3. @人之前要确认QQ号是否在群聊记录中出现过
-4. 不要重复使用相同的功能
-5. 管理功能要谨慎使用，确保合理性`;
+  /** 查看全局AI白名单 */
+  async showGlobalWhitelist(e) {
+    const list = config.ai?.globalWhitelist || [];
+    const msg = list.length ? 
+      `全局AI白名单：\n${list.map(g => `• ${g}`).join('\n')}` :
+      '全局AI白名单为空';
+    
+    await e.reply(msg);
+    return true;
+  }
 
-    return this.buildSystemPrompt(basePrompt, context);
+  /** 显示状态 */
+  async showStatus(e) {
+    const streamStatus = this.chatStream ? this.chatStream.getStatus() : null;
+    
+    const status = [
+      `【AI助手运行状态】`,
+      `• 用户缓存：${userCache.size}条`,
+      `• 普通白名单群：${(config.ai?.whitelist?.groups || []).length}个`,
+      `• 全局AI群：${(config.ai?.globalWhitelist || []).length}个`,
+      `• 触发前缀：${config.ai?.triggerPrefix || '无'}`,
+      `• 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%`,
+      `• 冷却时间：${config.ai?.globalAICooldown || 300}秒`,
+      `• 人设数量：${Object.keys(personas).length}个`,
+      streamStatus ? `• 工作流状态：${streamStatus.name} v${streamStatus.version}` : ''
+    ];
+    
+    await e.reply(status.join('\n'));
+    return true;
+  }
+
+  /** 获取当前人设名 */
+  getCurrentPersonaName(groupId) {
+    return groupPersonas.get(groupId) || config.ai?.defaultPersona || 'assistant';
+  }
+
+  /** 获取当前人设 */
+  getCurrentPersona(groupId) {
+    const name = this.getCurrentPersonaName(groupId);
+    return personas[name] || personas.assistant || '我是AI助手';
+  }
+
+  /** 清理缓存 */
+  cleanupCache() {
+    const now = Date.now();
+    
+    // 清理用户缓存
+    for (const [key, data] of userCache.entries()) {
+      if (now - data.time > 300000) { // 5分钟
+        userCache.delete(key);
+      }
+    }
+    
+    logger.debug(`[XRK-AI] 缓存清理完成`);
   }
 }
