@@ -1,0 +1,386 @@
+[
+    {
+      "name": "messageBoard",
+      "cn_name": "留言板",
+      "description": "多群共用留言板，可以在上面发布逆天言论，主人可删除指定留言，无留言数量限制，无留言CD，无字数限制，全开放式但只能留言文字，只有部分违禁词限制，可以打开文件自定义删除或添加。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/messageBoard.js"
+    },
+    {
+      "name": "checkphira",
+      "cn_name": "检查Phira状态插件",
+      "description": "因为近期Phira服务器频频炸服，群友需要，故诞生了本插件。",
+      "git": "https://gitee.com/pimeng/yunzai-simpleplugin/raw/master/checkphira.js"
+    },
+    {
+      "name": "kuaijubao",
+      "cn_name": "快举报",
+      "description": "在群内快速便捷地向管理员举报违规行为（仓库内还有其他更多插件）。",
+      "git": "https://github.com/xiaotian2333/yunzai-plugins-Single-file/raw/main/快举报.js"
+    },
+    {
+      "name": "genshinBossKills",
+      "cn_name": "原神BOSS击杀次数查询",
+      "description": "查询原神BOSS击杀次数，存储本地与群友进行排行，看谁噶的多，要群友使用功能才能进行排行哦！",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/原神世界BOSS.js"
+    },
+    {
+      "name": "genshinBackpack",
+      "cn_name": "原神背包查询",
+      "description": "如字面意思，查询原神背包，但不是所有物品。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/原神背包查询.js"
+    },
+    {
+      "name": "csgoInventory",
+      "cn_name": "CSGO库存查询",
+      "description": "通过SteamID查询CSGO库存。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/CS2库存查询.js"
+    },
+    {
+      "name": "recallManager",
+      "cn_name": "群消息撤回管理",
+      "description": "消息管理JS，管理并撤回群聊内含有群主设定的违禁词的消息。",
+      "git": "https://github.com/rainbowwarmth/Recall/raw/main/recall.js"
+    },
+    {
+      "name": "skyHeightQuery",
+      "cn_name": "光遇国服身高查询",
+      "description": "查询光遇角色身高数据等。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/[Sky]身高查询[用户自填Key].js"
+    },
+    {
+      "name": "botTasks",
+      "cn_name": "BOT续火&打卡&抽字符",
+      "description": "自动续火打卡抽字符。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/[Task]群打卡&诗词续火&抽字符 V1.1.js"
+    },
+    {
+      "name": "waveringPoolInfo",
+      "cn_name": "鸣潮卡池多久未复刻查询",
+      "description": "查询五星限定角色距今多久未复刻等信息。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/鸣潮卡池信息查询V1.0.js"
+    },
+    {
+      "name": "randomSuperPower",
+      "cn_name": "随机超能力",
+      "description": "获取一个超能力及对应的副作用（仓库内还有其他更多插件）。",
+      "git": "https://github.com/xiaotian2333/yunzai-plugins-Single-file/raw/main/随机超能力.js"
+    },
+    {
+      "name": "wukongWiki",
+      "cn_name": "黑神话B站wiki查询",
+      "description": "黑神话B站wiki查询，输入#影神图+要查询人物妖怪物品的名称，返回图片。",
+      "git": "https://gitee.com/wzwei1990/wukong/raw/master/wukong.js"
+    },
+    {
+      "name": "webPreview",
+      "cn_name": "网页预览截图",
+      "description": "自适应全屏网页截屏，可自定义屏蔽网址。",
+      "git": "https://gitee.com/tu-zhengxiong0925/JiaoziJS/raw/main/JavaScript/webPreview.js"
+    },
+    {
+      "name": "fadianLocal",
+      "cn_name": "发癫插件单JS本地版",
+      "description": "一个非常简洁的本地版发癫语录插件，内置几十条发癫语录。",
+      "git": "https://gitee.com/NyaOH/fadian-plugin/raw/master/fadian-plugin.js"
+    },
+    {
+      "name": "cogVideo",
+      "cn_name": "智谱AI视频生成",
+      "description": "基于智谱AI接口实现的简易文生视频/图生视频功能。",
+      "git": "https://gitee.com/xyzqwefd/yz-js-cogvideox/raw/master/aivideo.js"
+    },
+    {
+      "name": "McMotd",
+      "cn_name": "McMotd",
+      "description": "JE/BE双版本查询Motd，支持群聊自定义默认，返回图片，[效果图](https://github.com/Aliorpse/personal_html_templates)。",
+      "git": "https://gitee.com/Aliorpse/Yunzai-AliorpsePlugins/raw/master/mcplugins/McMotd.js"
+    },
+    {
+      "name": "osuPlayerInfo",
+      "cn_name": "osu!玩家信息查询",
+      "description": "osu!玩家信息查询，pp模拟计算（功能不完善）。",
+      "git": "https://gitee.com/Aliorpse/Yunzai-AliorpsePlugins/raw/master/osu.js"
+    },
+    {
+      "name": "bilitvParser",
+      "cn_name": "B站视频、番剧解析",
+      "description": "轻量、美观、快速的B站解析，支持链接、BV号、av号、b23.tv短链、ep号、ssid、md号。",
+      "git": "https://gitee.com/Aliorpse/Yunzai-AliorpsePlugins/raw/master/bilitv.js"
+    },
+    {
+      "name": "speechStatistics",
+      "cn_name": "发言统计",
+      "description": "统计群内发言排名修改版。",
+      "git": "https://gitee.com/KaedeharaLu/yunzai-plugin-example/raw/master/发言统计.js"
+    },
+    {
+      "name": "speechStatisticsTRSS",
+      "cn_name": "发言统计-TRSS",
+      "description": "统计群内发言排名修改版-TRSS版本。",
+      "git": "https://gitee.com/KaedeharaLu/yunzai-plugin-example/raw/master/发言统计-TRSS.js"
+    },
+    {
+      "name": "feedbackTRSS",
+      "cn_name": "反馈-TRSS",
+      "description": "反馈问题，主人可以查看。",
+      "git": "https://gitee.com/KaedeharaLu/yunzai-plugin-example/raw/master/反馈-TRSS.js"
+    },
+    {
+      "name": "simpleLotteryTRSS",
+      "cn_name": "简单彩票-TRSS",
+      "description": "做成像买彩票一样的运气比拼插件。注：无任何金钱交易内容。",
+      "git": "https://gitee.com/KaedeharaLu/yunzai-plugin-example/raw/master/简单彩票-TRSS.js"
+    },
+    {
+      "name": "afdianSponsorList",
+      "cn_name": "爱发电赞助者列表",
+      "description": "查看爱发电个人项目赞助者列表，展示金额，需要user_id与token。",
+      "git": "https://gitee.com/Aliorpse/Yunzai-AliorpsePlugins/raw/master/AfdianSponsorList.js"
+    },
+    {
+      "name": "groupPrefix",
+      "cn_name": "群前缀",
+      "description": "因为想用千羽的群前缀而又不想安装千羽插件。",
+      "git": "https://gitee.com/maple-leaf-sweeping/yunzai-js/raw/master/群前缀.js"
+    },
+    {
+      "name": "exportPanelData",
+      "cn_name": "导出面板数据",
+      "description": "将个人面板数据导入到另一个Bot上，省去了换Bot后在游戏内换展柜的麻烦。",
+      "git": "https://github.com/NotIvny/yunzai-panelData-js/raw/main/panelData.js"
+    },
+    {
+      "name": "Anosu",
+      "cn_name": "Anosu",
+      "description": "se！！！",
+      "git": "https://github.com/MIUKUKANO/yunzai-js/raw/main/Anosu.js"
+    },
+    {
+      "name": "cocFishInfo",
+      "cn_name": "coc鱼情查询",
+      "description": "部落冲突鱼情查询。",
+      "git": "https://gitee.com/lkah/yunzai-js/raw/master/coc鱼情.js"
+    },
+    {
+      "name": "messageProcessor",
+      "cn_name": "消息处理插件",
+      "description": "处理多段文本消息，使其合并成一段文本，防止一些渲染器出现问题（针对LiteLoaderQQNT）。",
+      "git": "https://gitee.com/Aliorpse/Yunzai-AliorpsePlugins/raw/master/MsgProcess.js"
+    },
+    {
+      "name": "gachaInfoQuery",
+      "cn_name": "卡池信息查询",
+      "description": "原神，星穹铁道和绝区零卡池信息及多久未复刻查询。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/电子木鱼.js"
+    },
+    {
+      "name": "electronicMuyu",
+      "cn_name": "电子木鱼",
+      "description": "敲电子木鱼，成赛博圣人。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/电子木鱼.js"
+    },
+    {
+      "name": "webScreenshot",
+      "cn_name": "网页截图",
+      "description": "网页截图。",
+      "git": "https://gitee.com/adrae/js-plugins/raw/master/网页截图/WebView.js"
+    },
+    {
+      "name": "gpt4o",
+      "cn_name": "gpt4o",
+      "description": "提供免费的gpt4o模型，且用且珍惜，坏了不一定修。",
+      "git": "https://gitee.com/LostInLinearPast/Occasional-updates-js/raw/master/gpt4.js"
+    },
+    {
+      "name": "genshinStarRailRank",
+      "cn_name": "原神星铁全服排行",
+      "description": "提供原神星铁全服角色排行插件。",
+      "git": "https://github.com/NotIvny/yunzai-characterRank-js"
+    },
+    {
+      "name": "redisOperations",
+      "cn_name": "redis便捷操作",
+      "description": "便捷增删改redis数据库。",
+      "git": "https://github.com/NotIvny/yunzai-operateRedis-js"
+    },
+    {
+      "name": "festivalQuery",
+      "cn_name": "节日查询",
+      "description": "查询距离当前日期最近的三个节日（可自定义数量），可设置gid和uid在节日当天推送。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/最近节日查询.js"
+    },
+    {
+      "name": "funnyPictures",
+      "cn_name": "沙雕图",
+      "description": "发送一张随机沙雕图（图库请看代码内注释）。",
+      "git": "https://gitee.com/bling_yshs/yunzaiv3-ys-plugin/raw/master/ys-沙雕图-reborn.js"
+    },
+    {
+      "name": "todayLuck",
+      "cn_name": "今日人品",
+      "description": "计算今日人品（根据时间和QQ号等概率哈希，所以结果仅供参考）。",
+      "git": "https://gitee.com/bling_yshs/yunzaiv3-ys-plugin/raw/master/ys-今日人品.js"
+    },
+    {
+      "name": "mihoyoCos",
+      "cn_name": "米游社cos",
+      "description": "发送随机米游社cos图片。",
+      "git": "https://gitee.com/bling_yshs/yunzaiv3-ys-plugin/raw/master/ys-米游社cos.js"
+    },
+    {
+      "name": "kuaishouZanXuHuo",
+      "cn_name": "点赞续火",
+      "description": "自动化点赞和续火，免去每天发“赞我”的麻烦（仓库内还有其他更多插件）。",
+      "git": "https://github.com/xiaotian2333/yunzai-plugins-Single-file/raw/main/点赞续火.js"
+    },
+    {
+      "name": "hykbSignIn",
+      "cn_name": "好游快爆爆米花签到",
+      "description": "可在群聊内签到好游快爆的爆米花。",
+      "git": "https://gitee.com/eulogyjiajia/js-feature-collection/raw/master/hykb/hykb.js"
+    },
+    {
+      "name": "genshinEventReminder",
+      "cn_name": "原神活动临期推送",
+      "description": "在指定群推送即将到期关闭的原神活动。",
+      "git": "https://gitee.com/qiannqq/yunzai-plugin-JS/raw/master/JS/hdts.js"
+    },
+    {
+      "name": "stdinCommand",
+      "cn_name": "标准输入",
+      "description": "使Miao-Yunzai支持控制台输入指令。",
+      "git": "https://gitee.com/qiannqq/yunzai-plugin-JS/raw/master/JS/stdin.js"
+    },
+    {
+      "name": "voiceSynthesis",
+      "cn_name": "陈泽丨丁真丨孙笑川语音合成",
+      "description": "合成陈泽、丁真、孙笑川语音并发送。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/[陈泽][丁真][孙笑川]语音合成.js"
+    },
+    {
+      "name": "tongyiQianwen",
+      "cn_name": "通义千问",
+      "description": "对接通义千问API的JS轻量插件，支持上下文、自设定，指定模型等。需要自备sk。",
+      "git": "https://gitee.com/qiannqq/yunzai-plugin-JS/raw/master/JS/tyqw.js"
+    },
+    {
+      "name": "starRailMaterial",
+      "cn_name": "星铁角色素材",
+      "description": "星铁角色素材查询。",
+      "git": "https://gitee.com/HanaHimeUnica/yzjs/raw/master/星铁角色素材.js"
+    },
+    {
+      "name": "signatureStatusCheck",
+      "cn_name": "签名状态检测",
+      "description": "检测各签名服务的可用性，可修改插件内的配置自定义要检测的签名接口（仓库内还有其他更多插件）。",
+      "git": "https://github.com/xiaotian2333/yunzai-plugins-Single-file/raw/main/签名状态检测.js"
+    },
+    {
+      "name": "deleteGachaRecord",
+      "cn_name": "删除抽卡记录",
+      "description": "此功能仅限原神抽卡记录错乱或本地抽卡记录小于一年的玩家使用。使用此功能后再使用【#更新抽卡记录】可更新一年内抽卡记录。",
+      "git": "https://gitee.com/HanaHimeUnica/yzjs/raw/master/删除抽卡记录.js"
+    },
+    {
+      "name": "randomHuaji",
+      "cn_name": "随机滑稽",
+      "description": "随机滑稽表情包，[滑稽库](https://gitee.com/Tloml-Starry/resources)。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/随机滑稽.js"
+    },
+    {
+      "name": "driftBottle",
+      "cn_name": "漂流瓶",
+      "description": "本地漂流瓶，适配QQBot按钮，可以捡到来自别的群的漂流瓶，配置文件都在插件内，请自行修改哦~",
+      "git": "https://gitee.com/SmallK111407/onlyJS/raw/main/driftBottle/driftBottle.js"
+    },
+    {
+      "name": "copyFiles",
+      "cn_name": "文件复制",
+      "description": "便捷替换文件，可用于文件备份或恢复。",
+      "git": "https://github.com/NotIvny/yunzai-copyfiles-js/raw/main/copyfiles.js"
+    },
+    {
+      "name": "helpMaster",
+      "cn_name": "主人被禁言解禁",
+      "description": "主人被禁言之后如果机器人是管理就进行解禁。",
+      "git": "https://gitee.com/adrae/js-plugins/raw/master/主人被禁言执行操作/HelpMaster.js"
+    },
+    {
+      "name": "recordHelp",
+      "cn_name": "记录帮助",
+      "description": "抽卡记录帮助，感谢[@曉K](https://gitee.com/SmallK111407/expand-plugin/raw/master/resources/RecordHelp/记录帮助.psd)ps图片来源。",
+      "git": "https://gitee.com/HanaHimeUnica/yzjs/raw/master/记录帮助.js"
+    },
+    {
+      "name": "kingHonorStats",
+      "cn_name": "王者战绩查询",
+      "description": "王者荣耀战绩查询。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/王者战绩查询.js"
+    },
+    {
+      "name": "pokeCount",
+      "cn_name": "戳一戳次数统计",
+      "description": "统计机器人在一个群内被戳的次数并且发送次数显示。",
+      "git": "https://gitee.com/adrae/js-plugins/raw/master/戳一戳次数统计/cyccs.js"
+    },
+    {
+      "name": "tomorrowMaterial",
+      "cn_name": "明日素材",
+      "description": "使用喵喵插件模版渲染的明日素材。",
+      "git": "https://gitee.com/HanaHimeUnica/yzjs/raw/master/明日素材.js"
+    },
+    {
+      "name": "cpTextGenerator",
+      "cn_name": "cp短打生成器",
+      "description": "本地cp短打生成器。",
+      "git": "https://github.com/myueqf/yzbot-js-cp-text-generator/raw/main/cp短打生成器.js"
+    },
+    {
+      "name": "cozeBotChat",
+      "cn_name": "coze群聊机器人",
+      "description": "配合Discord和coze机器人聊天，免费试用gpt4模型，支持连续对话和文本转语音。",
+      "git": "https://gitee.com/eulogyjiajia/coze_proxy/raw/master/coze.js"
+    },
+    {
+      "name": "autoGroupApproval",
+      "cn_name": "自动处理进群事件",
+      "description": "可以自动根据多个答案自动判断并同意进群。",
+      "git": "https://github.com/Dnyo666/Qxml-Yunzai-js"
+    },
+    {
+      "name": "qqMusicDuration",
+      "cn_name": "刷听歌时长",
+      "description": "刷取QQ音乐听歌时长，同时也可以刷取音响力。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/刷听歌时长.js"
+    },
+    {
+      "name": "speechRanking",
+      "cn_name": "发言榜",
+      "description": "通过机器人实时记录群内成员发言次数，需要机器人在线才可记录。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/发言榜.js"
+    },
+    {
+      "name": "douyinAITuShengTu",
+      "cn_name": "抖音AI图生图",
+      "description": "借助抖音的免费接口以图生图，不可以有涩涩内容，返回换个图的可能是识别到涩涩了。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/抖音AI图生图.js"
+    },
+    {
+      "name": "epicFreeGames",
+      "cn_name": "Epic免费游戏",
+      "description": "查询当前Epic免费游戏和即将推出的免费游戏。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/Epic免费游戏.js"
+    },
+    {
+      "name": "steamTopGames",
+      "cn_name": "Steam在线游戏人数排行",
+      "description": "返回游戏当前在线人数排行。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/Steam在线游戏人数排行.js"
+    },
+    {
+      "name": "findDifference",
+      "cn_name": "文字找茬",
+      "description": "汉字找不同游戏。",
+      "git": "https://gitee.com/Tloml-Starry/Plugin-Example/raw/master/JavaScript/文字找茬.js"
+    }
+]

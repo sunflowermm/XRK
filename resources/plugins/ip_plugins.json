@@ -1,0 +1,134 @@
+[
+  {
+    "name": "GloryOfKings-Plugin",
+    "cn_name": "王者荣耀插件",
+    "anothername": "王者插件 GloryOfKings 王者 王者荣耀",
+    "description": "通过扫码登录获取王者营地Token来查询战绩和主页信息等，更多功能王者相关功能正在制作。",
+    "git": "https://gitee.com/Tloml-Starry/GloryOfKings-Plugin"
+  },
+  {
+    "name": "yjwj-plugin",
+    "cn_name": "永劫无间插件",
+    "anothername": "永劫无间 永劫 永劫插件 yjwj",
+    "description": "游戏永劫无间查询功能插件，支持查询永劫无间官方影画廊海报与实机截图、查询端游表情包、获取每日60秒新闻早报等功能。",
+    "git": "https://gitee.com/njmxye/yjwj-plugin"
+  },
+  {
+    "name": "cb-plugin",
+    "cn_name": "尘白禁区插件",
+    "anothername": "尘白禁区 尘白 尘白插件 cb",
+    "description": "游戏尘白禁区查询功能插件，支持查询角色攻略、养成材料、强度榜等功能。",
+    "git": "https://github.com/Sakura1618/cb-plugin"
+  },
+  {
+    "name": "eso-plugin",
+    "cn_name": "上古卷轴OL插件",
+    "anothername": "上古卷轴OL 上古卷轴 上古卷轴插件 eso",
+    "description": "游戏上古卷轴OL查询功能插件，支持查询服务器状态、维护公告、装备图鉴、每日日常无畏副本等功能。",
+    "git": "https://github.com/ChicorSun/eso"
+  },
+  {
+    "name": "sv-plugin",
+    "cn_name": "星露谷插件",
+    "anothername": "星露谷 sv",
+    "description": "简单查询星露谷村民、物品以及星露谷大学（看看你属于哪个校区）功能的插件。",
+    "git": "https://gitee.com/xingdonglcy/sv-plugin"
+  },
+  {
+    "name": "Elysian-Realm-plugin",
+    "cn_name": "崩坏三乐土插件",
+    "anothername": "崩坏三 崩坏三插件 崩坏三乐土 Elysian-Realm",
+    "description": "崩坏3乐土攻略查询插件。",
+    "git": "https://github.com/zipated/Elysian-Realm-plugin"
+  },
+  {
+    "name": "ZZZ-Plugin",
+    "cn_name": "绝区零插件",
+    "anothername": "绝区零 ZZZ 雅小姐 zzz",
+    "description": "游戏绝区零查询功能插件，支持玩家信息、角色信息查询，抽卡记录、刷新、分析等功能。",
+    "git": "https://github.com/ZZZure/ZZZ-Plugin"
+  },
+  {
+    "name": "waves-plugin",
+    "cn_name": "鸣潮插件",
+    "anothername": "鸣潮 waves",
+    "description": "支持查询游戏内数据，推送波片信息以及库街区自动签到的鸣潮插件。",
+    "git": "https://github.com/erzaozi/waves-plugin"
+  },
+  {
+    "name": "arknights-plugin",
+    "cn_name": "明日方舟插件",
+    "anothername": "明日方舟 方舟插件 方舟 arknight",
+    "description": "提供明日方舟森空岛社区自动签到、干员练度查询、公招查询、MAA远程控制终端。",
+    "git": "https://github.com/gxy12345/arknights-plugin"
+  },
+  {
+    "name": "skland-plugin",
+    "cn_name": "明日方舟插件",
+    "anothername": "森空岛 森空岛插件 skland",
+    "description": "通过森空岛查询游戏信息，推送理智以及社区自动签到的明日方舟插件。",
+    "git": "https://github.com/erzaozi/skland-plugin"
+  },
+  {
+    "name": "1999-plugin",
+    "cn_name": "重返未来1999插件",
+    "anothername": "重返未来 1999 重返未来1999 1999插件 重返未来插件",
+    "description": "重返未来1999相关插件（图鉴，分析，娱乐）。",
+    "git": "https://gitee.com/fantasy-hx/1999-plugin"
+  },
+  {
+    "name": "mc-plugin",
+    "cn_name": "Minecraft插件",
+    "anothername": "Minecraft Minecraft插件 我的世界 我的世界插件 mc插件 mc minecraft插件 minecraft",
+    "description": "基于Yunzai-Bot的与Minecraft Server互通消息的插件，支持双向同步消息与指令操作。",
+    "git": "https://github.com/CikeyQi/mc-plugin"
+  },
+  {
+    "name": "SpaceXiao_Minecraft",
+    "cn_name": "我的世界插件",
+    "description": "可以配合minecraft的servertap插件在qq群/qq频道控制mc进行添加白名单，输入指令等操作。",
+    "git": "https://gitee.com/xiaofei20625/space-xiao_minecraft"
+  },
+  {
+    "name": "BlueArchive-plugin",
+    "cn_name": "碧蓝档案插件",
+    "anothername": "碧蓝档案 蔚蓝档案 蔚蓝档案插件 BlueArchive blueArchive",
+    "description": "提供碧蓝档案的一些有用的或没有用的攻略帮助。",
+    "git": "https://gitee.com/all-thoughts-are-broken/blue-archive"
+  },
+  {
+    "name": "Yunzai-Kuro-Plugin",
+    "cn_name": "库洛插件",
+    "anothername": "库洛 库洛游戏插件 库洛游戏 Kuro",
+    "description": "库洛游戏插件。",
+    "git": "https://github.com/TomyJan/Yunzai-Kuro-Plugin"
+  },
+  {
+    "name": "PhigrosLibrary-plugin",
+    "cn_name": "Phigros查分插件",
+    "anothername": "Phigros查分 phigros Phigros phigros插件 Phigros插件 PhigrosLibrary",
+    "description": "无需手动输入，获取SessionToken并绑定就可以从云端服务器查分，自动生成b19图片，精美的UI设计。",
+    "git": "https://github.com/Walkersifolia/PhigrosLibrary-plugin"
+  },
+  {
+    "name": "call_of_seven_saints",
+    "cn_name": "七圣召唤战绩查询",
+    "anothername": "七圣召唤 七圣召唤插件",
+    "description": "查询自己七圣召唤胜率以及卡牌喜好，目标用户应该是七圣召唤忠实玩家以及牌佬群机器人。",
+    "git": "https://gitee.com/huangshx2001/call_of_seven_saints"
+  },
+  {
+    "name": "phi-plugin",
+    "cn_name": "屁股肉插件",
+    "anothername": "屁股肉 phi",
+    "description": "提供Phigros现有曲目的曲目信息查询、个人rks计算、云端查分、随机phigros曲目等功能。",
+    "git": "https://github.com/catrong/phi-plugin"
+  },
+  {
+    "name": "Tlon-Sky",
+    "cn_name": "光遇插件",
+    "anothername": "光遇",
+    "description": "可查询每日任务等。",
+    "git": "https://gitee.com/Tloml-Starry/Tlon-Sky"
+  }
+]

@@ -1,0 +1,206 @@
+[
+    {
+        "province": "北京",
+        "province_code": "ABJ",
+        "Area": "北京 昌平 朝阳 大兴 房山 丰台 海淀 怀柔 门头沟 密云 平谷 石景山 顺义 通州 延庆",
+        "En_Area": "beijing changping chaoyang daxing fangshan fengtai haidian huairou mentougou miyun pinggu shijingshan shunyi tongzhou yanqing"
+    },
+    {
+        "province": "上海",
+        "province_code": "ASH",
+         "Area": "上海 黄浦 徐汇 长宁 静安 普陀 虹口 杨浦 闵行 宝山 嘉定 浦东 金山 松江 青浦 奉贤 崇明",
+        "En_Area": "shanghai huangpu xuhui changning jingan putuo hongkou yangpu minhang baoshan jiading pudong jinshan songjiang qingpu fengxian chongming"
+    },
+    {
+        "province": "天津",
+        "province_code": "ATJ",
+        "Area": "和平 河东 河西 南开 河北 红桥 滨海新区 东丽 西青 津南 北辰 武清 宝坻 宁河 静海 蓟州",
+        "En_Area": "heping hedong hexi nankai hebei hongqiao binhai dongli xiqing jinnan beichen wuqing baodi ninghe jinghai jizhou"
+    },
+    {
+        "province": "重庆",
+        "province_code": "ACQ",
+        "Area": "万州 涪陵 渝中 大渡口 江北 沙坪坝 九龙坡 南岸 北碚 綦江 大足 渝北 巴南 黔江 长寿 江津 合川 永川 南川 璧山 铜梁 潼南 荣昌 开州 梁平 武隆 城口 丰都 垫江 忠县 云阳 奉节 巫山 巫溪 石柱 秀山 酉阳 彭水",
+        "En_Area": "chongqing wanzhou fuling yuzhong dadukou jiangbei shapingba jiulongpo nanan beibei qijiang dazu yubei banan qianjiang changshou jiangjin hechuan yongchuan nanchuan bishan tongliang tongnan rongchang kaizhou liangping wulong chengkou fengdu dianjian zhongxian yunyang fengjie wushan wuxi shizhu xiushan youyang pengshui"
+    },
+    {
+        "province": "河北",
+        "province_code": "AHE", 
+        "Area": "石家庄 保定 沧州 承德 邯郸 衡水 廊坊 鹿泉 秦皇岛 任丘 容城 唐山 邢台 张家口 安国 安平 安新 霸州 柏乡 渤海新区黄骅 泊头 曹妃甸 曹妃甸零公里 昌黎 成安 承德县 赤城 崇礼 磁县 大厂 大城 大名 定州 东光 肥乡 丰南 丰宁 丰润 峰峰 抚宁 阜城 阜平 高碑店 高阳 高邑 沽源 故城 固安 馆陶 广平 广宗 海兴 河间 怀安 怀来 黄骅 鸡泽 冀州 晋州 井陉 景县 巨鹿 康保 宽城 乐亭 临城 临西 临漳 灵寿 隆化 隆尧 卢龙 滦南 滦平 滦州 满城 孟村 南宫 南和 南皮 内丘 宁晋 平泉 平山 平乡 迁安 迁西 青龙 青县 清河 邱县 曲阳 曲周 饶阳 任泽 塞罕坝 三河 沙河 尚义 涉县 深泽 深州 顺平 肃宁 唐县 万全 望都 威县 围场 蔚县 魏县 文安 无极 吴桥 武安 武强 武邑 献县 香河 辛集 新河 新乐 兴隆 行唐 雄县 徐水 宣化 盐山 阳原 易县 永年 永清 玉田 元氏 赞皇 枣强 张北 赵县 正定 遵化 藁城 涞源 涿鹿 涿州 栾城 蠡县",
+        "En_Area": "shijiazhuang baoding cangzhou chengde handan hengshui langfang luquan qinhuangdao renqiu rongcheng tangshan xingtai zhangjiakou anguo anping anxin bazhou baixiang bohaixinquhuangzuo botou caozuodian caozuodianlinggongli changli chengan chengdexian chicheng chongli cixian dachang dacheng daming dingzhou dongguang feixiang fengnan fengning fengrun fengfeng funing fucheng fuping gaobeidian gaoyang gaoyi guyuan gucheng guan guantao guangping guangzong haixing hejian huaian huailai huangzuo jize jizhou jinzhou jingzuo jingxian julu kangbao kuancheng leting lincheng linxi linzhang lingshou longhua longyao lulong luannan luanping luanzhou mancheng mengcun nangong nanhe nanpi neiqiu ningjin pingquan pingshan pingxiang qianan qianxi qinglong qingxian qinghe qiuxian quyang quzhou raoyang renze saihanba sanhe shahe shangyi shexian shenze shenzhou shunping suning tangxian wanquan wangdu weixian3 weichang weixian1 weixian2 wenan wuji wuqiao wuan wuqiang wuyi xianxian xianghe xinji xinhe xinle xinglong xingtang xiongxian xushui xuanhua yanshan yangyuan yixian yongnian yongqing yutian yuanshi zanhuang zaoqiang zhangbei zhaoxian zhengding zunhua zuocheng1 zuoyuan zuolu zuozhou zuocheng2 zuoxian"
+    },
+    {
+        "province": "山西",
+        "province_code": "ASX",
+        "Area": "太原 长治 大同 晋城 晋中 临汾 吕梁 朔州 忻州 阳泉 运城 安泽 保德 长子 大宁 代县 定襄 繁峙 方山 汾西 汾阳 浮山 高平 古交 古县 广灵 和顺 河津 河曲 洪洞 侯马 壶关 怀仁 浑源 霍州 吉县 尖草坪 交城 交口 介休 静乐 黎城 离石 临县 临猗 灵丘 灵石 陵川 柳林 娄烦 潞城 宁武 偏关 平定 平鲁 平陆 平顺 平遥 蒲县 祁县 沁水 沁县 沁源 清徐 曲沃 山阴 神池 石楼 寿阳 太谷 天镇 屯留 万荣 文水 闻喜 武乡 五台 五台山 五寨 昔阳 夏县 襄汾 襄垣 乡宁 小店 孝义 新绛 兴县 阳城 阳高 阳曲 翼城 应县 永和 永济 右玉 盂县 榆次 榆社 垣曲 原平 云州 中阳 左权 左云 隰县 芮城 岚县 岢岚 绛县 稷山",
+        "En_Area": "taiyuan changzhi datong jincheng jinzhong linfen lvliang shuozhou xinzhou yangquan yuncheng anze baode changzi daning daixian dingxiang fanzhi fangshan fenxi fenyang fushan gaoping gujiao guxian guangling heshun hejin hequ hongdong houma huguan huairen hunyuan huozhou jixian jiancaoping jiaocheng jiaokou jiexiu jingle licheng lishi linxian linyi lingqiu lingshi lingchuan liulin loufan lucheng ningwu pianguan pingding pinglu pinglu pingshun pingyao puxian qixian qinshui qinxian qinyuan qingxu quwo shanyin shenchi shilou shouyang taigu tianzhen tunliu wanrong wenshui wenxi wuxiang wutai wutaishan wuzhai xiyang xiaxian xiangfen xiangyuan xiangning xiaodian xiaoyi xinjiang xingxian yangcheng yanggao yangqu yicheng yingxian yonghe yongji youyu yuxian yuci yushe yuanqu yuanping yunzhou zhongyang zuoquan zuoyun xixian ruicheng lanxian kelan jiangxian jishan"
+    },
+    {
+        "province": "辽宁",
+        "province_code": "ALN",
+        "Area": "沈阳 鞍山 本溪 朝阳 大连 丹东 调兵山 阜新 葫芦岛 锦州 连山区 辽阳 盘山 铁岭 瓦房店 新宾 营口 北票 北镇 本溪县 昌图 长海 大石桥 大洼 灯塔 东港 法库 凤城 抚顺 盖州 海城 黑山 桓仁 建昌 建平 金州 喀左 开原 康平 宽甸 辽阳县 辽中 凌海 凌源 旅顺 盘锦 普兰店 清原 绥中 台安 西丰 新民 兴城 熊岳 义县 章党 彰武 庄河 岫岩",
+        "En_Area": "shenyang anshan benxi chaoyang dalian dandong diaobingshan fuxin huludao jinzhou lianshanqu liaoyang panshan tieling wafangdian xinbin yingkou beipiao beizhen benxixian changtu changhai dashiqiao dawa dengta donggang faku fengcheng fushun gaizhou haicheng heishan huanren jianchang jianping jinzhou kazuo kaiyuan kangping kuandian liaoyangxian liaozhong linghai lingyuan lvshun panjin pulandian qingyuan suizhong taian xifeng xinmin xingcheng xiongyue yixian zhangdang zhangwu zhuanghe xiuyan"
+     },
+     {
+        "province": "吉林",
+        "province_code": "AJL",
+        "Area": "长春 白城 白山 吉林 吉林城郊 集安 辽源 梅河口 四平 松原 通化 延边 延吉 珲春 桦甸 安图 长白 长岭 大安 德惠 东丰 东岗 敦化 二道 扶余 抚松 公主岭 和龙 辉南 靖宇 九台 梨树 临江 柳河 龙井 农安 磐石 乾安 前郭 舒兰 双辽 双阳 通化县 通榆 图们 汪清 伊通 永吉 榆树 镇赉 洮南 蛟河",
+        "En_Area": "changchun baicheng baishan jilin jilinchengjiao jian liaoyuan meihekou siping songyuan tonghua yanbian yanji hunchun huadian antu changbai changling daan dehui dongfeng donggang dunhua erdao fuyu fusong gongzhuling helong huinan jingyu jiutai lishu linjiang liuhe longjing nongan panshi qianan qianguo shulan shuangliao shuangyang tonghuaxian tongyu tumen wangqing yitong yongji yushu zhenlai taonan jiahe"
+    },
+    {
+        "province": "黑龙江",
+        "province_code": "AHL",
+        "Area": "哈尔滨 爱辉 北林 勃利 大庆 大兴安岭 杜尔伯特 甘南 鹤岗 黑河 鸡西 佳木斯 加格达奇 漠河 牡丹江 七台河 齐齐哈尔 双鸭山 绥芬河 绥化 伊春 阿城 安达 巴彦 拜泉 宝清 北安 宾县 东宁 方正 抚远 富锦 富裕 海林 海伦 呼兰 呼玛 呼中 虎林 鸡东 集贤 嘉荫 克东 克山 兰西 林甸 林口 龙江 萝北 密山 明水 木兰 穆棱 嫩江 宁安 青冈 庆安 饶河 尚志 双城 绥滨 绥棱 孙吴 塔河 泰来 汤旺 汤原 铁力 通河 同江 望奎 五常 五大连池 五营 新林 逊克 延寿 依安 依兰 友谊 肇东 肇源 肇州 讷河 桦川 桦南",
+        "En_Area": "haerbin aihui beilin boli daqing daxinganling duerbote gannan hegang heihe jixi jiamusi jiagedaqi mohe mudanjiang qitaihe qiqihaer shuangyashan suifenhe suihua yichun acheng anda bayan baiquan baoqing beian binxian dongning fangzheng fuyuan fujin fuyu hailin hailun hulan huma huzhong hulin jidong jixian jiayin kedong keshan lanxi lindian linkou longjiang luobei mishan mingshui mulan muleng nenjiang ningan qinggang qingan raohe shangzhi shuangcheng suibin suileng sunwu tahe tailai tangwang tangyuan tieli tonghe tongjiang wangkui wuchang wudalianchi wuying xinlin xunke yanshou yian yilan youyi zhaodong zhaoyuan zhaozhou nehe huachuan huanan"
+    },
+    {
+        "province": "江苏",
+        "province_code": "AJS",
+        "Area": "南京 常州 东台 赣榆 高邮 淮安区 连云港 南通 苏州 宿迁 泰州 无锡 徐州 盐城 盐都 扬州 镇江 盱眙 宝应 滨海 常熟 大丰 丹阳 东海 丰县 阜宁 高淳 灌南 灌云 海安 海门 洪泽 淮安 淮阴 建湖 姜堰 江都 江宁 江阴 金湖 金坛区 靖江 句容 昆山 涟水 六合 沛县 浦口 启东 如东 如皋 射阳 泰兴 太仓 通州 吴江 响水 新沂 兴化 扬中 仪征 宜兴 张家港 邳州 沭阳 泗洪 泗阳 溧水 溧阳 睢宁",
+        "En_Area": "nanjing changzhou dongtai ganyu gaoyou huaianqu lianyungang nantong suzhou suqian taizhou wuxi xuzhou yancheng yandu yangzhou zhenjiang zuozuo baoying binhai changshu dafeng danyang donghai fengxian funing gaochun guannan guanyun haian haimen hongze huaian huaiyin jianhu jiangyan jiangdu jiangning jiangyin jinhu jintanqu jingjiang jurong kunshan lianshui liuhe peixian pukou qidong rudong rugao sheyang taixing taicang tongzhou wujiang xiangshui xinyi xinghua yangzhong yizheng yixing zhangjiagang zuozhou zuoyang3 zuohong zuoyang4 zuoshui zuoyang5 zuoning"
+    },
+    {
+        "province": "浙江",
+        "province_code": "AZJ",
+        "Area": "杭州 定海 洞头 嘉兴 金华 景宁 柯桥 丽水 莲都 临安 临海 临平 宁波 宁海 磐安 平湖 绍兴 松阳 温州 镇海 舟山 鄞州 嵊州 衢州 安吉 北仑 苍南 常山 长兴 淳安 慈溪 德清 东阳 奉化 富阳 海宁 海曙 海盐 湖州 黄岩 嘉善 建德 江北 江山 椒江 开化 兰溪 乐清 龙港 龙泉 龙游 路桥 南浔 平阳 普陀 浦江 钱塘 青田 庆元 瑞安 三门 上虞 遂昌 台州 泰顺 天台 桐庐 桐乡 温岭 文成 武义 仙居 象山 萧山 新昌 义乌 永嘉 永康 余杭 余姚 玉环 云和 诸暨 岱山 嵊泗 衢江 缙云",
+        "En_Area": "hangzhou zhoushan1 dongtou jiaxing jinhua jingning keqiao liandu1 liandu2 linan linhai linping ningbo2 ninghai panan pinghu shaoxing songyang wenzhou zhenhai zhoushan2 ningbo1 zuozhou1 zuozhou2 anji beilun cangnan changshan changxing chunan cixi deqing dongyang fenghua fuyang haining haishu haiyan huzhou huangyan jiashan jiande jiangbei jiangshan taizhou1 kaihua lanxi leqing longgang longquan longyou luqiao nanzuo pingyang putuo pujiang qiantang qingtian qingyuan ruian sanmen shangyu suichang taizhou2 taishun tiantai tonglu tongxiang wenling wencheng wuyi xianju xiangshan xiaoshan xinchang yiwu yongjia yongkang yuhang yuyao yuhuan yunhe zhuzuo zuoshan zuozuo zuojiang zuoyun"
+    },
+    {
+        "province": "安徽", 
+        "province_code": "AAH",
+        "Area": "合肥 安庆 蚌埠 巢湖 池州 滁州 阜阳 淮北 淮南 六安 马鞍山 宿州 铜陵 屯溪 芜湖 宣城 亳州 长丰 当涂 定远 东至 繁昌 肥东 肥西 凤台 凤阳 阜南 固镇 广德 含山 和县 怀宁 怀远 黄山 黄山区 霍邱 霍山 绩溪 界首 金寨 九华山 来安 郎溪 利辛 临泉 灵璧 庐江 蒙城 明光 南陵 宁国 祁门 潜山 青阳 全椒 石台 寿县 舒城 宿松 太和 太湖 天长 桐城 湾沚 望江 涡阳 无为 五河 萧县 休宁 岳西 泗县 泾县 濉溪 枞阳 歙县 旌德 砀山 颍上 黟县",
+        "En_Area": "hefei anqing bangbu chaohu chizhou chuzhou fuyang huaibei huainan liuan maanshan suzhou tongling tunxi wuhu xuancheng zuozhou changfeng dangtu dingyuan dongzhi fanchang feidong feixi fengtai fengyang funan guzhen guangde hanshan hexian huaining huaiyuan huangshan huangshanqu huoqiu huoshan jixi jieshou jinzhai jiuhuashan laian langxi lixin linquan lingzuo lujiang mengcheng mingguang nanling ningguo qimen qianshan qingyang quanjiao shitai shouxian shucheng susong taihe taihu tianchang tongcheng wan wangjiang woyang wuwei wuhe xiaoxian xiuning yuexi zuoxian1 zuoxian2 zuoxi zuoyang zuoxian4 zuode zuoshan zuoshang zuoxian3"
+    },
+    {
+        "province": "福建",
+        "province_code": "AFJ",
+        "Area": "福州 钓鱼岛 建阳 晋江 龙岩 南平 宁德 莆田 浦城 三明 石狮 厦门 漳州 安溪 长乐 长泰 长汀 崇武 大田 德化 东山 福安 福鼎 福清 古田 光泽 华安 建宁 建瓯 将乐 连城 连江 龙海 罗源 闽侯 闽清 明溪 南安 南靖 宁化 平和 平潭 屏南 清流 泉州 沙县 上杭 邵武 寿宁 顺昌 松溪 泰宁 同安 武平 武夷山 霞浦 仙游 秀屿 延平 永安 永春 永定 永泰 尤溪 云霄 漳平 漳浦 政和 周宁 诏安 柘荣",
+        "En_Area": "fuzhou diaoyudao jianyang jinjiang longyan nanping ningde putian pucheng sanming shishi xiamen zhangzhou anxi changle changtai changting chongwu datian dehua dongshan fuan fuding fuqing gutian guangze huaan jianning jianzuo jiangle liancheng lianjiang longhai luoyuan minhou minqing mingxi nanan nanjing ninghua pinghe pingtan pingnan qingliu quanzhou shaxian shanghang shaowu shouning shunchang songxi taining tongan wuping wuyishan xiapu xianyou xiuyu yanping yongan yongchun yongding yongtai youxi yunxiao zhangping zhangpu zhenghe zhouning zuoan zuorong"
+    },
+    {
+        "province": "江西",
+        "province_code": "AJX",
+        "Area": "南昌 柴桑 浮梁 抚州 赣县 赣州 广昌 贵溪 吉安 吉安县 景德镇 九江 临川 芦溪 庐山 萍乡 上栗 上饶 新余 宜春 鹰潭 渝水 玉山 安福 安义 安远 崇仁 崇义 大余 德安 德兴 定南 东乡 都昌 分宜 丰城 奉新 高安 共青城 广丰区 广信 横峰 湖口 会昌 吉水 金溪 进贤 井冈山 靖安 乐安 乐平 黎川 莲花 龙南 庐山市 拿山 南昌县 南城 南丰 南康 宁都 彭泽 铅山 全南 瑞昌 瑞金 三清山 上高 上犹 石城 遂川 泰和 铜鼓 万安 万年 万载 武宁 峡江 新干 新建 信丰 兴国 修水 寻乌 宜丰 宜黄 永丰 永新 永修 于都 余干 余江 樟树 资溪 鄱阳 弋阳 婺源",
+        "En_Area": "nanchang chaisang fuliang fuzhou ganxian ganzhou guangchang guixi jian jianxian jingdezhen jiujiang linchuan luxi lushan pingxiang shangli shangrao xinyu yichun yingtan yushui yushan anfu anyi anyuan chongren chongyi dayu dean dexing dingnan dongxiang duchang fenyi fengcheng fengxin gaoan gongqingcheng guangfengqu guangxin hengfeng hukou huichang jishui jinxi jinxian jinggangshan jingan lean leping lichuan lianhua longnan lushanshi nashan nanchangxian nancheng nanfeng nankang ningdu pengze qianshan quannan ruichang ruijin sanqingshan shanggao shangyou shicheng suichuan taihe tonggu wanan wannian wanzai wuning xiajiang xingan xinjian xinfeng xingguo xiushui xunwu yifeng yihuang yongfeng yongxin yongxiu yudu yugan yujiang zhangshu zixi zuoyang6 zuoyang7 zuoyuan"
+    },
+    {
+        "province": "山东",
+        "province_code": "ASD",
+        "Area": "济南 滨州 德州 东营 菏泽 济宁 莱芜 聊城 临沂 青岛 日照 泰安 威海 潍坊 烟台 枣庄 淄博 安丘 博山 博兴 曹县 昌乐 昌邑 长岛 长清 成山头 成武 单县 定陶 东阿 东明 东平 肥城 费县 福山 高密 高青 高唐 冠县 广饶 海阳 河口 桓台 黄岛 惠民 即墨 济阳 嘉祥 胶州 金乡 巨野 垦利 莱西 莱阳 莱州 兰陵 乐陵 利津 梁山 临清 临邑 临淄 临沭 临朐 陵城 龙口 蒙阴 牟平 宁津 宁阳 蓬莱 平度 平邑 平阴 平原 栖霞 齐河 青州 庆云 曲阜 荣成 乳山 商河 石岛 寿光 台儿庄 微山 文登 无棣 武城 五莲 夏津 新泰 薛城 阳谷 阳信 沂南 沂水 沂源 鱼台 禹城 沾化 章丘 招远 周村 诸城 淄川 邹城 邹平 兖州 郓城 郯城 鄄城 茌平 莒南 莒县 莘县 峄城 崂山 汶上 泗水 滕州",
+        "En_Area": "jinan binzhou dezhou dongying heze jining laiwu liaocheng linyi2 qingdao rizhao taian weihai weifang yantai zaozhuang zibo anqiu boshan boxing caoxian changle changyi changdao changqing chengshantou chengwu danxian dingtao donga dongming dongping feicheng feixian fushan gaomi gaoqing gaotang guanxian guangrao haiyang hekou huantai huangdao huimin jimo jiyang jiaxiang jiaozhou jinxiang juye kenli laixi laiyang laizhou lanling leling lijin liangshan linqing linyi1 linzi linzuo2 linzuo1 lingcheng longkou mengyin mouping ningjin ningyang penglai pingdu pingyi pingyin pingyuan qixia qihe qingzhou qingyun qufu rongcheng rushan shanghe shidao shouguang taierzhuang weishan wendeng wuzuo wucheng wulian xiajin xintai xuecheng yanggu yangxin yinan yishui yiyuan yutai yucheng zhanhua zhangqiu zhaoyuan zhoucun zhucheng zichuan zoucheng zouping zuozhou1 zuocheng2 zuocheng4 zuocheng1 zuoping zuonan zuoxian2 zuoxian1 zuocheng3 zuoshan zuoshang zuoshui zuozhou2"
+    },
+    {
+        "province": "河南",
+        "province_code": "AHA",
+        "Area": "郑州 安阳 川汇区 鹤壁 济源 焦作 开封 南阳 平顶山 三门峡 商丘 新乡 信阳 许昌 周口 驻马店 潢川 漯河 濮阳 宝丰 博爱 长葛 长垣 郸城 登封 邓州 范县 方城 封丘 扶沟 巩义 固始 光山 滑县 淮滨 淮阳 辉县 获嘉 浚县 兰考 林州 临颍 灵宝 卢氏 鲁山 鹿邑 罗山 洛宁 洛阳 孟津 孟州 泌阳 民权 南乐 南召 内黄 内乡 宁陵 平舆 沁阳 清丰 确山 汝南 汝阳 汝州 商城 商水 上蔡 社旗 沈丘 遂平 台前 太康 汤阴 唐河 通许 桐柏 尉氏 卫辉 温县 武陟 舞钢 舞阳 西华 西平 西峡 息县 夏邑 襄城 项城 新安 新蔡 新密 新县 新野 新郑 修武 延津 叶县 伊川 宜阳 义马 永城 虞城 禹州 原阳 镇平 正阳 中牟 偃师 郏县 鄢陵 荥阳 嵩县 淇县 淅川 渑池 杞县 柘城 栾川 睢县",
+        "En_Area": "zhengzhou anyang chuanhuiqu hebi jiyuan jiaozuo kaifeng nanyang pingdingshan sanmenxia shangqiu xinxiang xinyang xuchang zhoukou zhumadian zuochuan3 zuohe zuoyang1 baofeng boai changge changyuan dancheng dengfeng dengzhou fanxian fangcheng fengqiu fugou gongyi gushi guangshan huaxian huaibin huaiyang huixian huojia junxian lankao linzhou linzuo lingbao lushi lushan luyi luoshan luoning luoyang2 luoyang1 mengzhou miyang minquan nanle nanzhao neihuang neixiang ningling pingyu qinyang qingfeng queshan runan ruyang ruzhou shangcheng shangshui shangcai sheqi shenqiu suiping taiqian taikang tangyin tanghe tongxu tongbai weishi weihui wenxian wuzuo wugang wuyang xihua xiping xixia xixian xiayi xiangcheng1 xiangcheng2 xinan xincai xinmi xinxian xinye xinzheng xiuwu yanjin yexian yichuan yiyang yima yongcheng yucheng yuzhou yuanyang zhenping zhengyang zhongmou zuoshi zuoxian4 zuoling zuoyang2 zuoxian3 zuoxian1 zuochuan2 zuochi zuoxian2 zuocheng zuochuan1 zuoxian5"
+    },
+    {
+        "province": "湖北",
+        "province_code": "AHB", 
+        "Area": "武汉 鄂州 恩施 黄冈 黄石 荆门 荆州 麻城 潜江 神农架 十堰 随州 天门 仙桃 咸宁 襄阳 孝感 宜昌 宜城 枣阳 安陆 巴东 保康 蔡甸 长阳 赤壁 崇阳 大悟 大冶 丹江口 当阳 房县 公安 谷城 广水 汉川 鹤峰 洪湖 红安 黄梅 黄陂 嘉鱼 监利 建始 江夏 京山 来凤 老河口 利川 罗田 南漳 沙洋 石首 松滋 随县 通城 通山 团风 武穴 五峰 咸丰 孝昌 新洲 兴山 宣恩 阳新 夷陵 夷陵三峡 宜都 英山 应城 远安 云梦 郧西 郧阳 枝江 钟祥 竹山 竹溪 蕲春 浠水 秭归",
+        "En_Area": "wuhan ezhou enshi huanggang huangshi jingmen jingzhou macheng qianjiang shennongjia shiyan suizhou tianmen xiantao xianning xiangyang xiaogan yichang yicheng zaoyang anlu badong baokang caidian changyang chibi chongyang dawu daye danjiangkou dangyang fangxian gongan gucheng guangshui hanchuan hefeng honghu hongan huangmei huangzuo jiayu jianli jianshi jiangxia jingshan laifeng laohekou lichuan luotian nanzhang shayang shishou songzi suixian tongcheng tongshan tuanfeng wuxue wufeng xianfeng xiaochang xinzhou xingshan xuanen yangxin yiling yilingsanxia yidu yingshan yingcheng yuanan yunmeng yunxi yunyang zhijiang zhongxiang zhushan zhuxi zuochun zuoshui zuogui"
+    },
+    {
+        "province": "湖南",
+        "province_code": "AHN",
+        "Area": "长沙市 长沙 长沙黄花 常德 郴州 赫山 衡阳 怀化 吉首 临武 娄底 南岳 桑植 邵阳 望城区 湘江新区 湘潭 湘西 益阳 永州 岳阳 张家界 株洲 沅陵县 安化 安仁 安乡 保靖 茶陵 常宁 辰溪 城步 慈利 道县 东安 洞口 凤凰 古丈 桂东 桂阳 汉寿 衡东 衡南 衡山 衡阳县 洪江 花垣 华容 会同 嘉禾 江华 江永 靖州 蓝山 冷水江 冷水滩 涟源 临湘 临澧 龙山 隆回 麻阳 南县 宁乡 宁远 平江 祁东 祁阳 汝城 韶山 邵东 邵阳县 石门 双峰县 双牌 绥宁 桃江 桃源 通道 武冈 湘乡 湘阴 新化 新晃 新宁 新邵 新田 炎陵 宜章 永顺 永兴 岳阳县 资兴 攸县 芷江 沅江 汨罗 泸溪 浏阳 溆浦 澧县 耒阳 醴陵",
+        "En_Area": "changshashi changsha changshahuanghua changde chenzhou heshan hengyang huaihua jishou linwu loudi nanyue sangzhi shaoyang wangchengqu xiangjiangxinqu xiangtan xiangxi yiyang yongzhou yueyang zhangjiajie zhuzhou zuolingxian anhua anren anxiang baojing chaling changning chenxi chengbu cili daoxian dongan dongkou fenghuang guzhang guidong guiyang hanshou hengdong hengnan hengshan hengyangxian hongjiang huayuan huarong huitong jiahe jianghua jiangyong jingzhou lanshan lengshuijiang lengshuitan lianyuan linxiang linzuo longshan longhui mayang nanxian ningxiang ningyuan pingjiang qidong qiyang rucheng shaoshan shaodong shaoyangxian shimen shuangfengxian shuangpai suining taojiang taoyuan tongdao wugang xiangxiang xiangyin xinhua xinhuang xinning xinshao xintian yanling yizhang yongshun yongxing yueyangxian zixing zuoxian2 zuojiang2 zuojiang1 zuoluo zuoxi zuoyang1 zuopu zuoxian1 zuoyang2 zuoling"
+    },
+    {
+        "province": "广东",
+        "province_code": "AGD",
+        "Area": "广州 潮州 电白 东莞 佛冈 佛山 高要 河源 鹤山 惠阳 惠州 揭阳 萝岗 茂名 梅县 梅州 南海 南雄 清远 饶平 汕头 汕尾 韶关 深圳 顺德 阳江 云浮 湛江 肇庆 中山 珠海 博罗 潮阳 澄海 从化 大埔 德庆 斗门 恩平 番禺 丰顺 封开 高州 广宁 海丰 和平 花都 化州 怀集 惠东 惠来 江门 蕉岭 揭西 开平 乐昌 雷州 连南 连平 连山 连州 廉江 龙川 龙门 陆丰 罗定 南澳 平远 普宁 仁化 乳源 三水 始兴 四会 遂溪 台山 翁源 吴川 五华 新丰 新会 新兴 信宜 兴宁 徐闻 阳春 阳山 英德 郁南 增城 紫金",
+        "En_Area": "guangzhou chaozhou dianbai dongzuo fogang foshan gaoyao heyuan heshan huiyang huizhou jieyang luogang maoming meixian meizhou nanhai nanxiong qingyuan raoping shantou shanwei shaoguan shenzuo shunde yangjiang yunfu zhanjiang zhaoqing zhongshan zhuhai boluo chaoyang chenghai conghua dapu deqing doumen enping fanzuo fengshun fengkai gaozhou guangning haifeng heping huadu huazhou huaiji huidong huilai jiangmen jiaoling jiexi kaiping lechang leizhou liannan lianping lianshan lianzhou lianjiang longchuan longmen lufeng luoding nanao pingyuan puning renhua ruyuan sanshui shixing sihui suixi taishan wengyuan wuchuan wuhua xinfeng xinhui xinxing xinyi xingning xuwen yangchun yangshan yingde yunan zengcheng zijin"
+    },
+    {
+        "province": "海南",
+        "province_code": "AHI",
+        "Area": "海口 白沙 保亭 澄迈 定安 东方 黄岩岛 乐东 临高 陵水 琼海 琼中 三沙 三亚 屯昌 万宁 文昌 西沙 儋州 昌江 南沙 五指山 中沙",
+        "En_Area": "haikou baisha baoting chengmai dingan dongfang huangyandao ledong lingao lingshui qionghai qiongzhong sansha sanya tunchang wanning wenchang xisha zuozhou changjiang nansha wuzhishan zhongsha"
+    },
+    {
+        "province": "四川",
+        "province_code": "ASC",
+        "Area": "成都 阿坝 巴中 达川 达州 峨眉山 甘孜 广安 广安区 广元 乐山 凉山 罗江 眉山 绵阳 南充 内江 攀枝花 遂宁 西昌 雅安 资阳 自贡 泸县 安岳 安州 巴塘 白玉 宝兴 北川 布拖 苍溪 长宁 崇州 大邑 大英 大竹 丹巴 丹棱 稻城 道孚 德昌 德格 德阳 得荣 都江堰 峨边 峨眉 富顺 甘洛 高县 古蔺 广汉 汉源 合江 黑水 洪雅 红原 华蓥 会东 会理城区 夹江 简阳 剑阁 江安 江油 金川 金堂 金阳 井研 九龙 九寨沟 开江 康定 乐至 雷波 理塘 理县 邻水 龙泉驿 隆昌 芦山 炉霍 马边 马尔康 茂县 美姑 米易 绵竹 冕宁 名山 木里 纳溪 南部 南江 南溪 宁南 彭山 彭州 蓬安 蓬溪 平昌 平武 屏山 蒲江 普格 前锋 青川 青神 渠县 壤塘 仁和 仁寿 荣县 若尔盖 三台 色达 射洪 石棉 石渠 什邡 双流 松潘 天全 通江 万源 旺苍 威远 温江 武胜 五通桥 西充 喜德 乡城 小金 新都 新津 新龙 兴文 叙永 叙州 宣汉 雅江 盐边 盐亭 盐源 仪陇新政 宜宾 营山 越西 岳池 昭觉 中江 资中 邛崃 郫都 荥经 阆中 沐川 汶川 泸定 泸州 珙县 梓潼 犍为 筠连",
+        "En_Area": "chengdu aba bazhong dachuan dazhou emeishan ganzi guangan guanganqu guangyuan leshan liangshan luojiang meishan mianyang nanchong neijiang panzhihua suining xichang yaan ziyang zigong zuoxian2 anyue anzhou batang baiyu baoxing beichuan butuo cangxi changning chongzhou dayi daying dazhu danba danleng daocheng daozuo dechang dege deyang derong dujiangyan ebian emei fushun ganluo gaoxian guzuo guanghan hanyuan hejiang heishui hongya hongyuan huazuo huidong huilichengqu jiajiang jianyang jiange jiangan jiangyou jinchuan jintang jinyang jingyan jiulong jiuzhaigou kaijiang kangding lezhi leibo litang lixian linshui longquanzuo longchang lushan luhuo mabian maerkang maoxian meigu miyi mianzhu mianning mingshan muli naxi nanbu nanjiang nanxi ningnan pengshan pengzhou pengan pengxi pingchang pingwu pingshan pujiang puge qianfeng qingchuan qingshen quxian rangtang renhe renshou rongxian ruoergai santai seda shehong shimian shiqu shizuo shuangliu songpan tianquan tongjiang wanyuan wangcang weiyuan wenjiang wusheng wutongqiao xichong xide xiangcheng xiaojin xindu xinjin xinlong xingwen xuyong xuzhou xuanhan yajiang yanbian yanting yanyuan yilongxinzheng yibin yingshan yuexi yuechi zhaojue zhongjiang zizhong zuozuo1 zuodu zuojing zuozhong zuochuan2 zuochuan1 zuoding zuozhou zuoxian1 zuozuo2 zuowei zuolian"
+    },
+    {
+        "province": "贵州",
+        "province_code": "AGZ",
+        "Area": "贵阳 毕节 都匀 凯里 六盘水 黔东南 黔南 黔西 黔西南 水城 铜仁 兴义 遵义 安龙 安顺 白云 播州 册亨 长顺 赤水 从江 大方 丹寨 道真 德江 独山 凤冈 福泉 关岭 贵定 赫章 花溪 黄平 惠水 剑河 江口 金沙 锦屏 开阳 雷山 黎平 荔波 六枝 龙里 罗甸 麻江 纳雍 盘州 平坝 平塘 普安 普定 清镇 晴隆 仁怀 三都 三穗 施秉 石阡 思南 松桃 绥阳 台江 天柱 桐梓 万山 望谟 威宁 瓮安 乌当 务川 息烽 习水 兴仁 修文 沿河 印江 余庆 玉屏 贞丰 镇宁 镇远 正安 织金 紫云 岑巩 湄潭 榕江",
+        "En_Area": "guiyang bijie duyun kaili liupanshui qiandongnan qiannan qianxi qianxinan shuicheng tongren xingyi zunyi anlong anshun baiyun bozhou ceheng changshun chishui congjiang dafang danzhai daozhen dejiang dushan fenggang fuquan guanling guiding hezhang huaxi huangping huishui jianhe jiangkou jinsha jinping kaiyang leishan liping libo liuzhi longli luodian majiang nayong panzhou pingba pingtang puan puding qingzhen qinglong renhuai sandu sansui shibing shizuo sinan songtao suiyang taijiang tianzhu tongzuo wanshan wangzuo weining wengan wudang wuchuan xifeng xishui xingren xiuwen yanhe yinjiang yuqing yuping zhenfeng zhenning zhenyuan zhengan zhijin ziyun zuogong zuotan zuojiang"
+    },
+    {
+        "province": "云南",
+        "province_code": "AYN",
+        "Area": "昆明 保山 楚雄 大理 德宏 迪庆 贡山 红河 景洪 丽江 临沧 芒市 普洱 瑞丽 思茅 文山 西双版纳 香格里拉 玉溪 昭通 安宁 宾川 沧源 昌宁 呈贡 澄江 大关 大姚 德钦 东川 峨山 洱源 凤庆 福贡 富民 富宁 富源 个旧 耿马 广南 河口 鹤庆 华宁 华坪 会泽 剑川 建水 江城 江川 金平 晋宁 景东 景谷 开远 兰坪 澜沧 梁河 六库 龙陵 陇川 鲁甸 禄丰 禄劝 陆良 绿春 罗平 麻栗坡 马关 马龙 蒙自 孟连 弥渡 弥勒 墨江 牟定 南华 南涧 宁洱 宁蒗 怒江 屏边 巧家 丘北 曲靖 师宗 施甸 石林 石屏 双柏 双江 水富 绥江 太华山 腾冲 通海 威信 巍山 维西 武定 西畴 西盟 祥云 新平 宣威 寻甸 盐津 砚山 漾濞 姚安 宜良 彝良 易门 盈江 永德 永平 永仁 永善 永胜 元江 元谋 元阳 云龙 云县 沾益 镇康 镇雄 镇沅 勐海 勐腊 嵩明 泸水 泸西",
+        "En_Area": "kunming baoshan chuxiong dali dehong diqing gongshan honghe jinghong lijiang lincang mangshi puer ruili simao wenshan xishuangbanna xianggelila yuxi zhaotong anning binchuan cangyuan changning chenggong chengjiang daguan dayao deqin dongchuan eshan eryuan fengqing fugong fumin funing fuyuan gejiu gengma guangnan hekou heqing huaning huaping huize jianchuan jianshui jiangcheng jiangchuan jinping jinning jingdong jinggu kaiyuan lanping lancang lianghe liuku longling longchuan ludian lufeng luquan luliang lvchun luoping malipo maguan malong mengzi menglian midu mile mojiang mouding nanhua nanjian ninger ningzuo nujiang pingbian qiaojia qiubei qujing shizong shidian shilin shiping shuangbai shuangjiang shuifu suijiang taihuashan tengchong tonghai weixin weishan weixi wuding xichou ximeng xiangyun xinping xuanwei xundian yanjin yanshan yangzuo yaoan yiliang2 yiliang1 yimen yingjiang yongde yongping yongren yongshan yongsheng yuanjiang yuanmou yuanyang yunlong yunxian zhanyi zhenkang zhenxiong zhenzuo zuohai zuola zuoming zuoshui zuoxi"
+    },
+    {
+        "province": "陕西",
+        "province_code": "ASN",
+        "Area": "西安 安康 宝鸡 汉中 秦都 商洛 商州 铜川 咸阳 延安 榆林 安塞 白河 白水 彬州 长安 长武 陈仓 城固 澄城 淳化 大荔 丹凤 定边 凤县 凤翔 佛坪 扶风 府谷 富平 富县 甘泉 高陵 韩城 汉阴 合阳 华山 华阴 华州 黄陵 黄龙 佳县 靖边 蓝田 礼泉 临潼 留坝 陇县 略阳 洛川 洛南 眉县 米脂 勉县 南郑 宁强 宁陕 平利 蒲城 千阳 乾县 清涧 三原 山阳 陕西横山 商南 神木 石泉 绥德 太白 渭南 吴堡 吴起 武功 西乡 兴平 旬阳 旬邑 延长 延川 杨凌 洋县 耀州 宜川 宜君 永寿 镇安 镇巴 镇坪 志丹 周至 紫阳 子长 子洲 柞水 鄠邑 岐山 岚皋 泾阳 潼关 麟游",
+        "En_Area": "xian ankang baoji hanzhong qindu shangluo shangzhou tongchuan xianyang yanan yulin ansai baihe baishui binzhou changan changwu chencang chenggu chengcheng chunhua dali danfeng dingbian fengxian fengxiang foping fufeng fugu fuping fuxian ganquan gaoling hancheng hanyin heyang huashan huayin huazhou huangling huanglong jiaxian jingbian lantian liquan linzuo liuba longxian lueyang luochuan luonan meixian mizhi mianxian nanzheng ningqiang ningshan pingli pucheng qianyang qianxian qingjian sanyuan shanyang shanxihengshan shangnan shenmu shiquan suide taibai weinan wubao wuqi wugong xixiang xingping xunyang xunyi yanchang yanchuan yangling yangxian yaozhou yichuan yijun yongshou zhenan zhenba zhenping zhidan zhouzhi ziyang zichang zizhou zuoshui zuoyi zuoshan zuogao zuoyang zuoguan zuoyou"
+    },
+    {
+        "province": "甘肃",
+        "province_code": "AGS",
+        "Area": "兰州 安定 白银 定西 嘉峪关 金昌 酒泉 临夏 陇南 平凉 庆城 天水 武都 崆峒 成县 崇信 迭部 东乡 敦煌 甘谷 甘南 皋兰 高台 古浪 瓜州 广河 和政 合水 合作 华池 华亭 环县 徽县 会宁 金塔 景泰 静宁 靖远 康乐 康县 礼县 两当 临潭 临泽 临洮 灵台 陇西 碌曲 玛曲 麦积 民乐 民勤 宁县 秦安 清水 庆阳 山丹 肃北 肃南 天祝 通渭 渭源 文县 武山 武威 西峰 西和 夏河 永昌 永登 永靖 榆中 玉门 漳县 张家川 张掖 镇原 正宁 舟曲 庄浪 卓尼 岷县 泾川 宕昌",
+        "En_Area": "lanzhou anding baiyin dingxi jiayuguan jinchang jiuquan linxia longnan pingliang qingcheng tianshui wudu zuozuo chengxian chongxin diebu dongxiang dunhuang gangu gannan gaolan gaotai gulang guazhou guanghe hezheng heshui hezuo huachi huating huanxian huixian huining jinta jingtai jingning jingyuan kangle kangxian lixian liangdang lintan linze linzuo lingtai longxi luqu maqu maiji minle minqin ningxian qinan qingshui qingyang shandan subei sunan tianzhu tongwei weiyuan wenxian wushan wuwei xifeng xihe xiahe yongchang yongdeng yongjing yuzhong yumen zhangxian zhangjiachuan zhangye zhenyuan zhengning zhouqu zhuanglang zhuoni zuoxian zuochuan zuochang"
+    },
+    {
+        "province": "青海",
+        "province_code": "AQH",
+        "Area": "西宁 德令哈 刚察 格尔木 共和 果洛 海北 海东 海南 海西 海晏 河南 玛沁 平安 玉树 班玛 称多查拉沟 达日 大柴旦 大通 都兰 甘德 贵德 贵南 互助 化隆 黄南 尖扎 久治 乐都 玛多 茫崖 门源 民和 囊谦 祁连 曲麻莱 天峻 同德 同仁 乌兰 兴海 循化 杂多 泽库 治多 湟源 湟中",
+        "En_Area": "xining delingha gangcha geermu gonghe guoluo haibei haidong hainan haixi haizuo henan maqin pingan yushu banma chengduochalagou dari dachaidan datong dulan gande guide guinan huzhu hualong huangnan jianzha jiuzhi ledu maduo mangya menyuan minhe nangqian qilian qumalai tianjun tongde tongren wulan xinghai xunhua zaduo zeku zhiduo zuoyuan zuozhong"
+    },
+    {
+       "province": "内蒙古",
+       "province_code": "ANM",
+       "Area": "呼和浩特 阿拉善盟 阿拉善右旗 阿拉善左旗 巴林右旗 巴彦淖尔 包头 赤峰 东胜 鄂尔多斯 二连浩特 海拉尔 呼伦贝尔 集宁 临河 通辽 乌海 乌兰察布 乌兰浩特 锡林郭勒 锡林浩特 兴安盟 阿巴嘎旗 阿尔山 阿鲁科尔沁旗 阿荣旗 敖汉旗 八里罕 巴林左旗 巴雅尔吐胡硕 巴彦诺日公 白云鄂博 宝国吐 博克图 察哈尔右翼前旗 察右后旗 察右中旗 陈巴尔虎旗 达尔罕茂明安联合旗 达拉特旗 大佘太 东乌珠穆沁旗 多伦 额尔古纳 额济纳旗 鄂伦春自治旗 鄂托克旗 鄂托克前旗 鄂温克族自治旗 丰镇 富河 岗子 高力板 根河 固阳 拐子湖 海力素 杭锦后旗 杭锦旗 和林格尔县 河南 胡尔勒 化德 霍林郭勒 吉兰泰 喀喇沁旗 开鲁 康巴什体育中心 科尔沁右翼中旗 科左后旗 科左中旗 克什克腾旗 库伦旗 凉城 林西 孪井滩 满都拉 满洲里 莫力达瓦达斡尔族自治旗 那仁宝力格 奈曼旗 宁城 青龙山 清水河 赛罕 商都 舍伯吐 四子王旗 苏尼特右旗 苏尼特左旗 索伦 太仆寺旗 突泉 图里河 土默特右旗 土默特左旗 托克托 翁牛特旗 乌拉盖 乌拉特后旗 乌拉特前旗 乌拉特中旗 乌审旗 乌审召 乌斯太 武川 五原 西乌珠穆沁旗 希拉穆仁 镶黄旗 小二沟 新巴尔虎右旗 新巴尔虎左旗 兴和 牙克石 雅布赖 伊金霍洛旗 伊克乌素 扎兰屯 扎鲁特旗 扎赉特旗 正蓝旗 正镶白旗 朱日和 准格尔旗 卓资 磴口",
+       "En_Area": "saihan1 alashanmeng alashanyouqi alashanzuoqi balinyouqi bayannaoer baotou chifeng dongsheng eerduosi erlianhaote hailaer hulunbeier jining linhe tongliao wuhai wulanchabu wulanhaote xilinguole xilinhaote xinganmeng abagaqi aershan alukeerqinqi arongqi aohanqi balihan balinzuoqi bayaertuhushuo bayannuorigong baiyunebo baoguotu boketu chahaeryouyiqianqi chayouhouqi chayouzhongqi chenbaerhuqi daerhanmaominganlianheqi dalateqi dazuotai dongwuzhumuqinqi duolun eerguna ejinaqi elunchunzizhiqi etuokeqi etuokeqianqi ewenkezuzizhiqi fengzhen fuhe gangzi gaoliban genhe guyang guaizihu hailisu hangjinhouqi hangjinqi helingeerxian henan huerle huade huolinguole jilantai kalaqinqi kailu kangbashitiyuzhongxin keerqinyouyizhongqi kezuohouqi kezuozhongqi keshiketengqi kulunqi liangcheng linxi luanjingtan mandula manzhouli molidawadawoerzuzizhiqi narenbaolige naimanqi ningcheng qinglongshan qingshuihe saihan2 shangdu shebotu siziwangqi suniteyouqi sunitezuoqi suolun taipusiqi tuquan tulihe tumoteyouqi tumotezuoqi tuoketuo wengniuteqi wulagai wulatehouqi wulateqianqi wulatezhongqi wushenqi wushenzhao wusitai wuchuan wuyuan xiwuzhumuqinqi xilamuren xianghuangqi xiaoergou xinbaerhuyouqi xinbaerhuzuoqi xinghe yakeshi yabulai yijinhuoluoqi yikewusu zhalantun zhaluteqi zhazuoteqi zhenglanqi zhengxiangbaiqi zhurihe zhungeerqi zhuozi zuokou"
+    },
+    {
+        "province": "广西",
+        "province_code": "AGX",
+        "Area": "南宁 百色 北海 崇左 防城港 桂林 贵港 合山 河池 贺州 来宾 南宁城区 钦州 田阳 梧州 玉林 巴马 北流 宾阳 博白 苍梧 大新 德保 东兰 东兴 都安 防城 凤山 扶绥 富川 恭城 灌阳 桂平 合浦 横州 环江 金秀 靖西 乐业 荔浦 临桂 凌云 灵川 灵山 柳城 柳江 柳州 龙胜 龙州 龙圩 隆安 隆林 鹿寨 陆川 罗城 马山 蒙山 那坡 南丹 宁明 平果 平乐 平南 凭祥 浦北 全州 融安 融水 容县 三江 上林 上思 藤县 天等 天峨 田东 田林 武鸣 武宣 西林 象州 忻城 兴安 阳朔 宜州 永福 昭平 钟山 资源 岑溪 涠洲岛 邕宁",
+        "En_Area": "nanning baise beihai chongzuo fangchenggang guilin guigang heshan hechi hezhou laibin nanningchengqu qinzhou tianyang wuzhou yulin bama beiliu binyang bobai cangwu daxin debao donglan dongxing duan fangcheng fengshan fusui fuchuan gongcheng guanyang guiping hepu hengzhou huanjiang jinxiu jingxi leye lipu lingui lingyun lingchuan lingshan liucheng liujiang liuzhou longsheng longzhou longzuo longan longlin luzhai luchuan luocheng mashan mengshan napo nandan ningming pingguo pingle pingnan pingxiang pubei quanzhou rongan rongshui rongxian sanjiang shanglin shangsi tengxian tiandeng tiane tiandong tianlin wuming wuxuan xilin xiangzhou xincheng xingan yangshuo yizhou yongfu zhaoping zhongshan ziyuan zuoxi zuozhoudao zuoning"
+    },
+    {
+        "province": "西藏",
+        "province_code": "AXZ",
+        "Area": "拉萨 昌都 林芝 那曲 普兰 日喀则 山南 泽当 阿里 安多 昂仁 八宿 巴青 白朗 班戈 比如 边坝 波密 察雅 察隅 措美 措勤 错那 达孜 当雄 丁青 定结 定日 堆龙德庆 改则 岗巴 革吉 工布江达 贡嘎 贡觉 吉隆 嘉黎 加查 江达 江孜 康马 拉孜 朗县 浪卡子 类乌齐 林周 隆子 洛隆 洛扎 芒康 米林 墨脱 墨竹工卡 南木林 尼玛 尼木 聂拉木 聂荣 帕里 琼结 曲水 曲松 仁布 日土 萨嘎 萨迦 桑日 申扎 狮泉河 双湖 索县 谢通门 扎囊 札达 仲巴 左贡",
+        "En_Area": "lasa changdu linzhi naqu pulan rikaze shannan zedang ali anduo angren basu baqing bailang bange biru bianba bomi chaya chayu cuomei cuoqin cuona dazi dangxiong dingqing dingjie dingri duilongdeqing gaize gangba geji gongbujiangda gongga gongjue jilong jiali jiacha jiangda jiangzi kangma lazi langxian langkazi leiwuqi linzhou longzi luolong luozha mangkang milin motuo mozhugongka nanmulin nima nimu nielamu nierong pali qiongjie qushui qusong renbu ritu saga sazuo sangri shenzha shiquanhe shuanghu suoxian xietongmen zhanang zhada zhongba zuogong"
+    },
+    {
+        "province": "宁夏",
+        "province_code": "ANX",
+        "Area": "银川 固原 石嘴山 吴忠 中卫 海原 贺兰 惠农 灵武 隆德 彭阳 平罗 青铜峡 陶乐 同心 西吉 盐池 永宁 中宁 泾源",
+        "En_Area": "yinchuan guyuan shizuishan wuzhong zhongwei haiyuan helan huinong lingwu longde pengyang pingluo qingtongxia taole tongxin xiji yanchi yongning zhongning zuoyuan"
+    },
+    {
+        "province": "新疆",
+        "province_code": "AXJ",
+        "Area": "乌鲁木齐 五家渠 阿拉尔 阿勒泰 阿图什 北屯 博尔塔拉 博乐 哈密 和田 克拉玛依 克州 奇台 沙湾 石河子 塔城 吐鲁番 伊犁 伊宁 阿合奇 阿克苏 阿克陶 阿拉山口 阿瓦提 巴楚 巴里坤 巴仑台 巴音布鲁克 巴音郭楞 拜城 博湖 布尔津 蔡家湖 策勒 察布查尔 昌吉 达坂城 额敏 福海 阜康 富蕴 巩留 哈巴河 和布克赛尔 和静 和硕 呼图壁 霍城 霍尔果斯 吉木乃 吉木萨尔 精河 喀什 柯坪 可克达拉 库车 库尔勒 奎屯 昆玉 轮台 洛浦 玛纳斯 麦盖提 米东区 民丰 莫索湾 墨玉 木垒 尼勒克 炮台 皮山 且末 青河 若羌 莎车 沙雅 塔什库尔干 塔中 特克斯 天池 铁干里克 铁门关 图木舒克 托克逊 托里 尉犁 温泉 温宿 乌鲁木齐牧试站 乌恰 乌什 乌苏 小渠子 新和 新源 焉耆 叶城 伊宁县 伊吾 英吉沙 于田 裕民 岳普湖 泽普 昭苏 伽师 鄯善",
+        "En_Area": "wulumuqi wujiaqu alaer aletai atushi beitun boertala bole hami hetian kelamayi kezhou qitai shawan shihezi tacheng tulufan yili yining aheqi akesu aketao alashankou awati bachu balikun baluntai bayinbuluke bayinguoleng baicheng bohu buerjin caijiahu cele chabuchaer changji dazuocheng emin fuhai fukang fuyun gongliu habahe hebukesaier hejing heshuo hutubi huocheng huoerguosi jimunai jimusaer jinghe kashi keping kekedala kuche kuerle kuitun kunyu luntai luopu manasi maigaiti midongqu minfeng mosuowan moyu mulei nileke paotai pishan qiemo qinghe ruoqiang shache shaya tashikuergan tazhong tekesi tianchi tieganlike tiemenguan tumushuke tuokexun tuoli weili wenquan wensu wulumuqimushizhan wuqia wushi wusu xiaoquzi xinhe xinyuan yanzuo yecheng yiningxian yiwu yingjisha yutian yumin yuepuhu zepu zhaosu zuoshi zuoshan"
+    },
+    {
+        "province": "台湾",
+        "province_code": "ATW",
+        "Area": "台北 高雄 台中",
+        "En_Area": "taibei gaoxiong taizhong"
+    },
+    {
+        "province": "香港",
+        "province_code": "AXG",
+        "Area": "香港 香港天文台",
+        "En_Area": "xianggang xianggangtianwentai"
+    },
+    {
+        "province": "澳门",
+        "province_code": "AAM",
+        "Area": "澳门 大潭山",
+        "En_Area": "aomen datanshan"
+    }
+]

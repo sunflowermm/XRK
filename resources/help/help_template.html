@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>向日葵帮助</title>
+    <link rel="stylesheet" href="help.css">
+</head>
+<body>
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 背景图片 -->
+        <div class="background"></div>
+        <!-- 内容区域 -->
+        <div class="content">
+            <!-- 头部 -->
+            <div class="head-box">
+                <h1 class="title">{{title}}</h1>
+                <h2 class="sub-title">{{subTitle}}</h2>
+            </div>
+            <!-- 帮助内容 -->
+            <div class="cont-box">
+                {{helpSections}}
+            </div>
+            <!-- 页脚 -->
+            <footer>
+                <small>Powered by {{mainPackageName}} {{mainPackageVersion}} && {{pluginPackageName}} {{pluginPackageVersion}}</small>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

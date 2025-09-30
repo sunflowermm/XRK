@@ -1,0 +1,66 @@
+/* style.css */
+@font-face {
+    font-family: 'ZCOOL XiaoWei';
+    src: url('ZCOOLXiaoWei-Regular.ttf') format('truetype');
+  }
+  
+  body {
+    font-family: 'ZCOOL XiaoWei', sans-serif;
+    background: url('feixiao-general.png') no-repeat center center fixed;
+    background-size: cover;
+    color: #333;
+    padding: 20px;
+    margin: 0;
+  }
+  
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  .header h2 {
+    font-size: 32px;
+    color: #FF6347;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  .plugin-item {
+    border-bottom: 1px solid #eee;
+    padding: 15px 0;
+  }
+  
+  .plugin-item h3 {
+    font-size: 24px;
+    color: #FF4500;
+  }
+  
+  .plugin-item p {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #555;
+  }
+  
+  .plugin-item:last-child {
+    border-bottom: none;
+  }
+  
+  a {
+    color: #1E90FF;
+    text-decoration: none;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+  
+  .footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #999;
+  }

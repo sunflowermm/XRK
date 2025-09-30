@@ -1,0 +1,154 @@
+/* 引入本地中文字体 */
+@font-face {
+    font-family: 'ZCOOLKuaiLe';
+    src: url('cute.ttf') format('truetype');
+}
+
+/* 全局样式 */
+body {
+    margin: 0 auto;
+    padding: 0;
+    width: 830px;
+    background: url('{{bgImagePath}}') no-repeat center center;
+    background-size: cover;
+    font-family: 'ZCOOLKuaiLe', Arial, sans-serif;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* 容器样式 */
+.container {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 20px;
+    border-radius: 15px;
+    width: 800px;
+    margin: 30px auto;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* 标题样式 */
+.head-box {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.head-box .title {
+    font-size: 36px;
+    color: #ff6b6b;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 内容盒子 */
+.cont-box {
+    border-radius: 15px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 帮助分组 */
+.help-group {
+    font-size: 20px;
+    color: #ff6b6b;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+/* 表格样式 */
+.help-table {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.help-table .td {
+    font-size: 16px;
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    text-align: left;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* 图标样式 */
+.help-icon {
+    width: 30px;
+    height: 30px;
+    display: inline-block;
+    background-size: contain;
+    background-repeat: no-repeat;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+footer {
+    text-align: center;
+    padding: 20px 0 10px 0;
+    font-size: 20px;
+    color: #8b2751;
+}
+
+footer small {
+    font-style: italic;
+}
+/* 图标具体样式 */
+.icon-1 { background-image: url('icons/icon-1.png'); }
+.icon-2 { background-image: url('icons/icon-2.png'); }
+.icon-3 { background-image: url('icons/icon-3.png'); }
+.icon-4 { background-image: url('icons/icon-4.png'); }
+.icon-5 { background-image: url('icons/icon-5.png'); }
+.icon-6 { background-image: url('icons/icon-6.png'); }
+.icon-7 { background-image: url('icons/icon-7.png'); }
+.icon-8 { background-image: url('icons/icon-8.png'); }
+.icon-9 { background-image: url('icons/icon-9.png'); }
+.icon-10 { background-image: url('icons/icon-10.png'); }
+.icon-11 { background-image: url('icons/icon-11.png'); }
+.icon-12 { background-image: url('icons/icon-12.png'); }
+.icon-13 { background-image: url('icons/icon-13.png'); }
+.icon-14 { background-image: url('icons/icon-14.png'); }
+.icon-15 { background-image: url('icons/icon-15.png'); }
+.icon-16 { background-image: url('icons/icon-16.png'); }
+.icon-17 { background-image: url('icons/icon-17.png'); }
+.icon-18 { background-image: url('icons/icon-18.png'); }
+.icon-19 { background-image: url('icons/icon-19.png'); }
+.icon-20 { background-image: url('icons/icon-20.png'); }
+.icon-21 { background-image: url('icons/icon-21.png'); }
+.icon-22 { background-image: url('icons/icon-22.png'); }
+.icon-23 { background-image: url('icons/icon-23.png'); }
+.icon-24 { background-image: url('icons/icon-24.png'); }
+.icon-25 { background-image: url('icons/icon-25.png'); }
+.icon-26 { background-image: url('icons/icon-26.png'); }
+.icon-27 { background-image: url('icons/icon-27.png'); }
+.icon-28 { background-image: url('icons/icon-28.png'); }
+.icon-29 { background-image: url('icons/icon-29.png'); }
+.icon-30 { background-image: url('icons/icon-30.png'); }
+.icon-31 { background-image: url('icons/icon-31.png'); }
+.icon-32 { background-image: url('icons/icon-32.png'); }
+.icon-33 { background-image: url('icons/icon-33.png'); }
+.icon-34 { background-image: url('icons/icon-34.png'); }
+.icon-35 { background-image: url('icons/icon-35.png'); }
+.icon-36 { background-image: url('icons/icon-36.png'); }
+.icon-37 { background-image: url('icons/icon-37.png'); }
+.icon-38 { background-image: url('icons/icon-38.png'); }
+.icon-39 { background-image: url('icons/icon-39.png'); }
+.icon-40 { background-image: url('icons/icon-40.png'); }
+
+
+
+/* 响应式设计 */
+@media screen and (max-width: 600px) {
+    body {
+        width: 100%;
+    }
+    .container {
+        width: 95%;
+    }
+    .head-box .title {
+        font-size: 28px;
+    }
+    .help-table .td {
+        font-size: 14px;
+    }
+}

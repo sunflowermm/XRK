@@ -1,0 +1,100 @@
+[
+    {
+        "name": "XRK",
+        "cn_name": "向日葵插件",
+        "anothername": "向日葵 xrk",
+        "description": "为机器人提供一些冒泡功能，如整点报时，全局表情(可以自定义图库)，还有一些小功能，建议搭配向日葵脚本一起使用",
+        "git": "https://gitcode.com/Xrkseek/XRK"
+      },
+    {
+        "name": "miao-plugin",
+        "cn_name": "喵喵插件",
+        "anothername": "喵喵 miaomiao miao 喵 原神插件",
+        "description": "Miao-Plugin是一个基于原神的插件，提供包括角色面板查询等升级功能。",
+        "git": "https://github.com/yoimiya-kokomi/miao-plugin"
+    },
+    {
+        "name": "TRSS-Plugin",
+        "cn_name": "时雨插件",
+        "anothername": "时雨 TRSS trss",
+        "description": "时雨插件的备用安装方式",
+        "git": "https://gitee.com/TimeRainStarSky/TRSS-Plugin"
+    },
+    {
+        "name": "guoba-plugin",
+        "cn_name": "锅巴插件",
+        "anothername": "锅巴 guoba",
+        "description": "V3主要提供云崽的网页端后台管理界面功能；V2提供丝滑迁移V3功能。",
+        "git": "https://gitee.com/guoba-yunzai/guoba-plugin"
+    },
+    {
+        "name": "ZZZ-Plugin",
+        "cn_name": "绝区零插件",
+        "anothername": "绝区零 ZZZ 雅小姐 zzz",
+        "description": "游戏绝区零查询功能插件，支持玩家信息、角色信息查询，抽卡记录、刷新、分析等功能。",
+        "git": "https://github.com/ZZZure/ZZZ-Plugin"
+    },
+    {
+        "name": "StarRail-plugin",
+        "cn_name": "星铁插件",
+        "anothername": "星铁 StarRail starrail 三月七 星穹铁道 星穹铁道插件",
+        "description": "一个提供了崩坏星穹铁道部分查询功能的插件，如#星铁卡片 #星铁体力 #星铁收入 等",
+        "git": "https://gitee.com/hewang1an/StarRail-plugin"
+    },
+    {
+        "name": "genshin",
+        "cn_name": "必备米游插件",
+        "anothername": "必备米游",
+        "description": "绑定上面的米家三件套，真的绑定，时雨崽记得安装，喵崽默认有",
+        "git": "https://gitee.com/TimeRainStarSky/Yunzai-genshin"
+    },
+    {
+        "name": "xiaoyao-cvs-plugin",
+        "cn_name": "逍遥插件",
+        "anothername": "逍遥 xiaoyao 绑定ck插件 扫码插件",
+        "description": "绑定上面的米家三件套，提供抽卡数据，米游社ck等服务",
+        "git": "https://github.com/Ctrlcvs/xiaoyao-cvs-plugin.git"
+    },
+    {
+        "name": "rconsole-plugin",
+        "cn_name": "R插件",
+        "anothername": "R rconsole 解析插件",
+        "description": "发送#R帮助解锁功能，特别好用的各平台解析",
+        "git": "https://gitee.com/kyrzy0416/rconsole-plugin"
+    },
+    {
+        "name": "yenai-plugin",
+        "cn_name": "椰奶插件",
+        "anothername": "椰奶 yenai 群管插件",
+        "description": "提供非常便携的群管帮助，#椰奶帮助 查询功能",
+        "git": "https://github.com/yeyang52/yenai-plugin"
+    },
+    {
+        "name": "earth-k-plugin",
+        "cn_name": "土块插件",
+        "anothername": "土块 earth-k",
+        "description": "Earth-K-Plugin是一个Yunzai-Bot的附属插件，主要提供了原史及部分功能，具体可见#土块帮助",
+        "git": "https://gitee.com/SmallK111407/earth-k-plugin"
+    },
+    {
+        "name": "Atlas",
+        "cn_name": "图鉴",
+        "anothername": "atlas",
+        "description": "支持原神和崩坏：星穹铁道的新一代图鉴插件。",
+        "git": "https://github.com/Nwflower/atlas"
+    },
+    {
+        "name": "xitian-plugin",
+        "cn_name": "戏天插件",
+        "anothername": "戏天 xitian js插件管理",
+        "description": "提供js类插件管理功能。",
+        "git": "https://gitee.com/XiTianGame/xitian-plugin"
+    },
+    {
+        "name": "kkkkkk-10086",
+        "cn_name": "kkk插件",
+        "anothername": "神金中国移动 kkk 视频解析 kkkkkk 10086",
+        "description": "视频解析",
+        "git": "https://github.com/ikenxuan/kkkkkk-10086"
+    }
+]
