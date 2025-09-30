@@ -7,7 +7,7 @@ import FormData from 'form-data';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
-import StreamLoader from '../aistream/loader.js';
+import StreamLoader from '../../../lib/aistream/loader.js';
 
 const _path = process.cwd();
 
