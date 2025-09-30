@@ -7,6 +7,7 @@ import FormData from 'form-data';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
+import StreamLoader from '../aistream/loader.js';
 
 const _path = process.cwd();
 
@@ -31,18 +32,6 @@ let personas = {};
 // 表情包类型
 const EMOTION_TYPES = ['开心', '惊讶', '伤心', '大笑', '害怕', '生气'];
 
-// 表情回应映射
-const EMOJI_REACTIONS = {
-  '开心': ['4', '14', '21', '28', '76', '79', '99', '182', '201', '290'],
-  '惊讶': ['26', '32', '97', '180', '268', '289'],
-  '伤心': ['5', '9', '106', '111', '173', '174'],
-  '大笑': ['4', '12', '28', '101', '182', '281'],
-  '害怕': ['26', '27', '41', '96'],
-  '喜欢': ['42', '63', '85', '116', '122', '319'],
-  '爱心': ['66', '122', '319'],
-  '生气': ['8', '23', '39', '86', '179', '265']
-};
-
 // 工具函数：生成随机范围数字
 function randomRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -66,6 +55,9 @@ export class XRKAIAssistant extends plugin {
     
     this.config = 解析向日葵插件yaml();
     config = this.config;
+    
+    // 获取聊天工作流
+    this.chatStream = null;
   }
 
   /** 初始化 */
@@ -99,6 +91,10 @@ export class XRKAIAssistant extends plugin {
     
     // 加载定时任务
     await this.loadScheduledTasks();
+    
+    // 加载工作流
+    await StreamLoader.load();
+    this.chatStream = this.getStream('XRKChat');
     
     // 定期清理缓存
     setInterval(() => this.cleanupCache(), 300000); // 5分钟
@@ -216,7 +212,7 @@ export class XRKAIAssistant extends plugin {
     }
   }
 
-  /** 判断是否触发AI - 修复核心逻辑 */
+  /** 判断是否触发AI */
   async shouldTriggerAI(e) {
     // 检查是否在白名单中（群组或用户）
     const isInWhitelist = () => {
@@ -299,7 +295,7 @@ export class XRKAIAssistant extends plugin {
     return false;
   }
 
-  /** 处理AI */
+  /** 处理AI - 使用工作流系统 */
   async processAI(e) {
     try {
       const groupId = e.group_id || `private_${e.user_id}`;
@@ -312,6 +308,7 @@ export class XRKAIAssistant extends plugin {
          config.ai?.triggerPrefix === '' || 
          !e.msg?.startsWith(config.ai.triggerPrefix));
       
+      // 处理消息内容
       let question = await this.processMessageContent(e);
       
       // 如果是主动触发但没有内容
@@ -325,10 +322,45 @@ export class XRKAIAssistant extends plugin {
         return true;
       }
       
-      const messages = await this.buildChatContext(e, persona, question, isGlobalTrigger);
-      const response = await this.callAI(messages);
+      // 构建上下文
+      const context = await this.buildContext(e, question, isGlobalTrigger);
       
-      if (!response) {
+      // 获取机器人角色
+      const botRole = await this.getBotRole(e);
+      
+      // 准备日期字符串
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+      
+      // 使用工作流系统调用 AI
+      const result = await this.callAIStream(
+        {
+          baseUrl: config.ai?.baseUrl,
+          apiKey: config.ai?.apiKey,
+          model: config.ai?.chatModel || 'gpt-3.5-turbo',
+          temperature: config.ai?.temperature || 0.8,
+          max_tokens: config.ai?.max_tokens || 6000,
+          top_p: config.ai?.top_p || 0.9,
+          extra: {
+            presence_penalty: config.ai?.presence_penalty || 0.6,
+            frequency_penalty: config.ai?.frequency_penalty || 0.6
+          }
+        },
+        this.chatStream,
+        {
+          prompt: persona,
+          e: e,
+          dateStr: dateStr,
+          isGlobalTrigger: isGlobalTrigger,
+          botRole: botRole,
+          question: question,
+          history: context.history,
+          getEmotionImage: (emotion) => this.getRandomEmotionImage(emotion),
+          createReminder: (e, params) => this.createReminder(e, params)
+        }
+      );
+      
+      if (!result.success) {
         // 全局触发失败时静默处理
         if (isGlobalTrigger) {
           logger.debug('[XRK-AI] 全局AI响应失败，静默处理');
@@ -337,12 +369,73 @@ export class XRKAIAssistant extends plugin {
         return true;
       }
 
-      await this.processAIResponse(e, response);
+      // 处理 AI 响应
+      await this.processAIResponse(e, result);
       return true;
+      
     } catch (error) {
       logger.error(`[XRK-AI] AI处理失败: ${error.message}`);
       return false;
     }
+  }
+
+  /** 构建上下文 */
+  async buildContext(e, question, isGlobalTrigger) {
+    const context = { history: [] };
+    
+    if (!e.isGroup) {
+      // 私聊
+      const userInfo = e.sender?.nickname || '未知';
+      context.history = [{
+        role: 'user',
+        content: `${userInfo}(${e.user_id}): ${question}`
+      }];
+      return context;
+    }
+    
+    // 群聊
+    const history = messageHistory.get(e.group_id) || [];
+    
+    if (isGlobalTrigger) {
+      // 全局触发时，提供更多历史
+      const recentMessages = history.slice(-15);
+      if (recentMessages.length > 0) {
+        context.history = [{
+          role: 'user',
+          content: `[群聊记录]\n${recentMessages.map(msg => 
+            `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
+          ).join('\n')}\n\n请对当前话题发表你的看法，要自然且有自己的观点。`
+        }];
+      }
+    } else {
+      // 主动触发时
+      const currentIndex = history.findIndex(msg => msg.message_id === e.message_id);
+      let relevantHistory = [];
+      
+      if (currentIndex > 0) {
+        const historyCount = Math.min(config.ai?.historyLimit || 10, currentIndex);
+        relevantHistory = history.slice(Math.max(0, currentIndex - historyCount), currentIndex);
+      } else if (currentIndex === -1 && history.length > 0) {
+        relevantHistory = history.slice(-(config.ai?.historyLimit || 10));
+      }
+      
+      if (relevantHistory.length > 0) {
+        context.history.push({
+          role: 'user',
+          content: `[群聊记录]\n${relevantHistory.map(msg => 
+            `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
+          ).join('\n')}`
+        });
+      }
+      
+      const userInfo = e.sender?.card || e.sender?.nickname || '未知';
+      context.history.push({
+        role: 'user',
+        content: `[当前消息]\n${userInfo}(${e.user_id})[${e.message_id}]: ${question}`
+      });
+    }
+    
+    return context;
   }
 
   /** 处理消息内容（包含识图） */
@@ -434,7 +527,12 @@ export class XRKAIAssistant extends plugin {
         }
       ];
       
-      const result = await this.callAI(messages, config.ai.visionModel);
+      const result = await this.callAI(messages, {
+        baseUrl: config.ai?.baseUrl,
+        apiKey: config.ai?.apiKey,
+        model: config.ai.visionModel
+      });
+      
       return result || '识图失败';
       
     } catch (error) {
@@ -499,130 +597,6 @@ export class XRKAIAssistant extends plugin {
     }
   }
 
-  /** 构建聊天上下文 */
-  async buildChatContext(e, persona, question, isGlobalTrigger = false) {
-    const messages = [];
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-    
-    messages.push({ 
-      role: 'system', 
-      content: await this.buildSystemPrompt(e, persona, dateStr, isGlobalTrigger) 
-    });
-    
-    if (e.isGroup) {
-      const history = messageHistory.get(e.group_id) || [];
-      
-      if (isGlobalTrigger) {
-        // 全局触发时，提供更多历史
-        const recentMessages = history.slice(-15);
-        if (recentMessages.length > 0) {
-          messages.push({
-            role: 'user',
-            content: `[群聊记录]\n${recentMessages.map(msg => 
-              `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
-            ).join('\n')}\n\n请对当前话题发表你的看法，要自然且有自己的观点。`
-          });
-        }
-      } else {
-        // 主动触发时
-        const currentIndex = history.findIndex(msg => msg.message_id === e.message_id);
-        let relevantHistory = [];
-        
-        if (currentIndex > 0) {
-          const historyCount = Math.min(config.ai?.historyLimit || 10, currentIndex);
-          relevantHistory = history.slice(Math.max(0, currentIndex - historyCount), currentIndex);
-        } else if (currentIndex === -1 && history.length > 0) {
-          relevantHistory = history.slice(-(config.ai?.historyLimit || 10));
-        }
-        
-        if (relevantHistory.length > 0) {
-          messages.push({
-            role: 'user',
-            content: `[群聊记录]\n${relevantHistory.map(msg => 
-              `${msg.nickname}(${msg.user_id})[${msg.message_id}]: ${msg.message}`
-            ).join('\n')}`
-          });
-        }
-        
-        const userInfo = e.sender?.card || e.sender?.nickname || '未知';
-        messages.push({
-          role: 'user',
-          content: `[当前消息]\n${userInfo}(${e.user_id})[${e.message_id}]: ${question}`
-        });
-      }
-    } else {
-      // 私聊
-      const userInfo = e.sender?.nickname || '未知';
-      messages.push({
-        role: 'user',
-        content: `${userInfo}(${e.user_id}): ${question}`
-      });
-    }
-    
-    return messages;
-  }
-
-  /** 构建系统提示 */
-  async buildSystemPrompt(e, persona, dateStr, isGlobalTrigger) {
-    const botRole = await this.getBotRole(e);
-    
-    const systemPrompt = `【人设设定】
-${persona}
-
-【身份信息】
-名字：${Bot.nickname}
-QQ号：${e.self_id}
-${e.isGroup ? `群名：${e.group?.group_name || '未知'}
-群号：${e.group_id}
-身份：${botRole}` : ''}
-
-【时间信息】
-当前时间：${dateStr}
-
-【触发方式】
-${isGlobalTrigger ? '观察群聊后主动发言' : '被召唤回复'}
-
-【基础规则】
-1. 你是一个真实的QQ用户，不是AI助手
-2. 说话要自然、简洁、有个性
-3. 最多使用一个竖线分隔符(|)，也就是最多发送两条消息
-4. 每条消息不要太长，像正常聊天一样
-5. 适当使用表情包和互动功能
-
-【表情包系统】
-在文字中插入以下标记来发送表情包（一次对话只能使用一个表情包）：
-[开心] [惊讶] [伤心] [大笑] [害怕] [生气]
-重要：每次回复最多只能使用一个表情包标记！
-
-【互动功能】
-[CQ:at,qq=QQ号] - @某人（确保QQ号存在）
-[CQ:poke,qq=QQ号] - 戳一戳某人
-[CQ:reply,id=消息ID] - 回复某条消息
-[回应:消息ID:表情类型] - 给消息添加表情回应
-[点赞:QQ号:次数] - 给某人点赞（1-50次）
-[签到] - 执行群签到
-${botRole !== '成员' ? `[禁言:QQ号:秒数] - 禁言
-[解禁:QQ号] - 解除禁言
-[精华:消息ID] - 设置精华消息
-[公告:内容] - 发布群公告` : ''}
-[提醒:年-月-日 时:分:内容] - 设置定时提醒
-
-【重要限制】
-1. 每次回复最多只能发一个表情包
-2. 最多使用一个竖线(|)分隔，也就是最多两条消息
-3. @人之前要确认QQ号是否在群聊记录中出现过
-4. 不要重复使用相同的功能
-
-【注意事项】
-${isGlobalTrigger ? '1. 主动发言要有新意，不要重复他人观点\n2. 可以随机戳一戳活跃的成员\n3. 语气要自然，像普通群员一样' : '1. 回复要针对性强，不要答非所问\n2. 被召唤时更要积极互动'}
-3. @人时只使用出现在群聊记录中的QQ号
-4. 多使用戳一戳和表情回应来增加互动性
-${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
-
-    return systemPrompt;
-  }
-
   /** 获取机器人角色 */
   async getBotRole(e) {
     if (!e.isGroup) return '';
@@ -646,47 +620,56 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
     }
   }
 
-  /** 处理AI响应 */
-  async processAIResponse(e, response) {
+  /** 处理AI响应 - 使用工作流执行结果 */
+  async processAIResponse(e, aiResult) {
     try {
+      const { response, executed, raw } = aiResult;
+      
       // 使用竖线分割响应，最多两段
       const segments = response.split('|').map(s => s.trim()).filter(s => s).slice(0, 2);
       
       // 统计总的表情包数量，确保只发一个
       let emotionSent = false;
       
+      // 收集所有执行的动作
+      const executedActions = new Set();
+      if (executed && Array.isArray(executed)) {
+        executed.forEach(exec => {
+          if (exec.success && exec.result) {
+            executedActions.add(exec.result.action || exec.result.type);
+          }
+        });
+      }
+      
       for (let i = 0; i < segments.length; i++) {
         const responseSegment = segments[i];
         
-        // 解析当前段落
-        const { textParts, emotions, functions } = this.parseResponseSegment(responseSegment);
-        
-        // 只发送第一个表情包
-        if (!emotionSent && emotions.length > 0) {
-          const emotionImage = this.getRandomEmotionImage(emotions[0]);
-          if (emotionImage) {
-            await e.reply(segment.image(emotionImage));
+        // 检查是否有表情包动作被执行
+        if (!emotionSent && executed) {
+          const emotionExec = executed.find(e => e.result?.action === 'emotion');
+          if (emotionExec && emotionExec.result?.image) {
+            await e.reply(segment.image(emotionExec.result.image));
             emotionSent = true;
             await Bot.sleep(300);
           }
         }
         
-        // 发送文本内容
-        if (textParts.length > 0) {
-          const msgSegments = [];
-          for (const part of textParts) {
-            const cqSegments = await this.parseCQCodes(part, e);
-            msgSegments.push(...cqSegments);
-          }
-          
-          if (msgSegments.length > 0) {
-            await e.reply(msgSegments, Math.random() > 0.5);
-          }
+        // 发送文本内容（移除已执行的 CQ 码）
+        let cleanText = responseSegment;
+        
+        // 移除已经被工作流处理的 CQ 码
+        if (executed) {
+          executed.forEach(exec => {
+            if (exec.result?.match) {
+              cleanText = cleanText.replace(exec.result.match, '');
+            }
+          });
         }
         
-        // 执行功能
-        for (const func of functions) {
-          await this.executeFunction(func, e);
+        cleanText = cleanText.trim();
+        
+        if (cleanText) {
+          await e.reply(cleanText, Math.random() > 0.5);
         }
         
         // 延迟到下一个segment
@@ -699,206 +682,7 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
     }
   }
 
-  /** 解析响应段落 */
-  parseResponseSegment(segmentText) {
-    const textParts = [];
-    const emotions = [];
-    const functions = [];
-    
-    // 提取功能
-    const functionPatterns = [
-      { regex: /\[回应:([^:]+):([^\]]+)\]/g, type: 'emojiReaction' },
-      { regex: /\[点赞:(\d+):(\d+)\]/g, type: 'thumbUp' },
-      { regex: /\[签到\]/g, type: 'sign' },
-      { regex: /\[禁言:(\d+):(\d+)\]/g, type: 'mute' },
-      { regex: /\[解禁:(\d+)\]/g, type: 'unmute' },
-      { regex: /\[精华:([^\]]+)\]/g, type: 'essence' },
-      { regex: /\[公告:([^\]]+)\]/g, type: 'notice' },
-      { regex: /\[提醒:([^:]+):([^:]+):([^\]]+)\]/g, type: 'reminder' }
-    ];
-    
-    let cleanedSegment = segmentText;
-    
-    functionPatterns.forEach(({ regex, type }) => {
-      let match;
-      regex.lastIndex = 0; // 重置正则表达式
-      while ((match = regex.exec(segmentText))) {
-        functions.push({ type, params: match.slice(1) });
-        cleanedSegment = cleanedSegment.replace(match[0], '');
-      }
-    });
-    
-    // 提取表情包（只提取第一个）
-    const emotionRegex = /\[(开心|惊讶|伤心|大笑|害怕|生气)\]/g;
-    let emotionMatch = emotionRegex.exec(cleanedSegment);
-    if (emotionMatch) {
-      emotions.push(emotionMatch[1]);
-      cleanedSegment = cleanedSegment.replace(emotionRegex, '');
-    }
-    
-    // 剩余的文本内容
-    if (cleanedSegment.trim()) {
-      textParts.push(cleanedSegment.trim());
-    }
-    
-    return { textParts, emotions, functions };
-  }
-
-  /** 解析CQ码 */
-  async parseCQCodes(text, e) {
-    const segments = [];
-    const parts = text.split(/(\[CQ:[^\]]+\])/);
-    
-    for (const part of parts) {
-      if (part.startsWith('[CQ:')) {
-        const cqSegment = await this.parseSingleCQCode(part, e);
-        if (cqSegment) {
-          segments.push(cqSegment);
-        }
-      } else if (part) {
-        segments.push(part);
-      }
-    }
-    
-    return segments;
-  }
-
-  /** 解析单个CQ码 */
-  async parseSingleCQCode(cqCode, e) {
-    const match = cqCode.match(/\[CQ:(\w+)(?:,([^\]]+))?\]/);
-    if (!match) return null;
-    
-    const [, type, params] = match;
-    const paramObj = {};
-    
-    if (params) {
-      params.split(',').forEach(p => {
-        const [key, value] = p.split('=');
-        paramObj[key] = value;
-      });
-    }
-    
-    switch (type) {
-      case 'at':
-        if (e.isGroup && paramObj.qq) {
-          const history = messageHistory.get(e.group_id) || [];
-          const userExists = history.some(msg => String(msg.user_id) === String(paramObj.qq));
-          
-          if (userExists) {
-            try {
-              const member = e.group.pickMember(paramObj.qq);
-              await member.getInfo();
-              return segment.at(paramObj.qq);
-            } catch {
-              return null;
-            }
-          }
-        }
-        return null;
-        
-      case 'poke':
-        if (e.isGroup && paramObj.qq) {
-          try {
-            await e.group.pokeMember(paramObj.qq);
-            return null;
-          } catch {
-            return null;
-          }
-        }
-        return null;
-        
-      case 'reply':
-        return segment.reply(paramObj.id);
-        
-      case 'image':
-        return segment.image(paramObj.file);
-        
-      default:
-        return null;
-    }
-  }
-
-  /** 执行功能 */
-  async executeFunction(func, e) {
-    if (!e.isGroup && func.type !== 'reminder') return;
-    
-    try {
-      switch (func.type) {
-        case 'emojiReaction':
-          const [msgId, emojiType] = func.params;
-          if (msgId && EMOJI_REACTIONS[emojiType]) {
-            const emojiIds = EMOJI_REACTIONS[emojiType];
-            const emojiId = emojiIds[Math.floor(Math.random() * emojiIds.length)];
-            await e.group.setEmojiLike(msgId, emojiId);
-          }
-          break;
-          
-        case 'thumbUp':
-          const [qq, count] = func.params;
-          if (e.isGroup) {
-            const thumbCount = Math.min(parseInt(count) || 1, 50);
-            await e.group.pickMember(qq).thumbUp(thumbCount);
-          }
-          break;
-          
-        case 'sign':
-          if (e.isGroup) {
-            await e.group.sign();
-          }
-          break;
-          
-        case 'mute':
-          if (await this.checkPermission(e, 'mute')) {
-            await e.group.muteMember(func.params[0], parseInt(func.params[1]));
-          }
-          break;
-          
-        case 'unmute':
-          if (await this.checkPermission(e, 'mute')) {
-            await e.group.muteMember(func.params[0], 0);
-          }
-          break;
-          
-        case 'essence':
-          if (await this.checkPermission(e, 'admin')) {
-            await e.group.setEssence(func.params[0]);
-          }
-          break;
-          
-        case 'notice':
-          if (await this.checkPermission(e, 'admin')) {
-            await e.group.sendNotice(func.params[0]);
-          }
-          break;
-          
-        case 'reminder':
-          await this.createReminder(e, func.params);
-          break;
-      }
-    } catch (err) {
-      logger.error(`[XRK-AI] 功能执行失败: ${func.type} - ${err.message}`);
-    }
-  }
-
-  /** 检查权限 */
-  async checkPermission(e, permission) {
-    if (!e.isGroup) return false;
-    if (e.isMaster) return true;
-    
-    const role = await this.getBotRole(e);
-    
-    switch (permission) {
-      case 'mute':
-      case 'admin':
-        return role === '群主' || role === '管理员';
-      case 'owner':
-        return role === '群主';
-      default:
-        return false;
-    }
-  }
-
-  /** 创建提醒 - 修复循环触发问题 */
+  /** 创建提醒 */
   async createReminder(e, params) {
     try {
       const [dateStr, timeStr, content] = params;
@@ -910,7 +694,7 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
       
       if (reminderTime <= new Date()) {
         await e.reply('提醒时间必须在未来');
-        return;
+        return null;
       }
       
       const task = {
@@ -932,9 +716,12 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
         await e.reply(segment.image(emotionImage));
       }
       await e.reply(`已设置提醒：${dateStr} ${timeStr} "${content}"`);
+      
+      return { action: 'reminder', task };
     } catch (error) {
       logger.error(`[XRK-AI] 创建提醒失败: ${error.message}`);
       await e.reply('设置提醒失败，请检查格式');
+      return null;
     }
   }
 
@@ -972,6 +759,12 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
       await e.reply('人设和表情包已重新加载');
       return true;
     }
+    else if (msg === '#AI重载工作流') {
+      await StreamLoader.reloadAll();
+      this.chatStream = this.getStream('XRKChat');
+      await e.reply('工作流已重新加载');
+      return true;
+    }
     else if (msg === '#AI清理任务') {
       return await this.clearExpiredTasks(e);
     }
@@ -993,6 +786,7 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
 #AI移除全局 [群号] - 移除全局AI
 #AI查看全局 - 查看全局AI列表
 #AI重载人设 - 重新加载人设和表情包
+#AI重载工作流 - 重新加载工作流系统
 #AI清理任务 - 清理过期任务
 #AI状态 - 查看运行状态
 
@@ -1002,7 +796,8 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
 • 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%
 • 冷却时间：${config.ai?.globalAICooldown || 300}秒
 • 表情回应：AI自主决定回应表情
-• 识图功能：发送图片时自动识别`;
+• 识图功能：发送图片时自动识别
+• 工作流系统：自动解析和执行AI指令`;
     
     await e.reply(help);
     return true;
@@ -1150,6 +945,8 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
       .map(([emotion, images]) => `${emotion}:${images.length}张`)
       .join(' ');
     
+    const streamStatus = StreamLoader.getStatus();
+    
     const status = [
       `【AI助手运行状态】`,
       `• 消息缓存：${messageHistory.size}个群`,
@@ -1161,7 +958,12 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
       `• 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%`,
       `• 冷却时间：${config.ai?.globalAICooldown || 300}秒`,
       `• 人设数量：${Object.keys(personas).length}个`,
-      `• 表情包：${emotionStats}`
+      `• 表情包：${emotionStats}`,
+      `\n【工作流系统】`,
+      `• 已加载：${streamStatus.loaded}个`,
+      `• 活跃中：${streamStatus.active}个`,
+      `• 队列中：${streamStatus.queued}个`,
+      `• 缓存量：${streamStatus.cached}条`
     ];
     
     await e.reply(status.join('\n'));
@@ -1177,39 +979,6 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
   getCurrentPersona(groupId) {
     const name = this.getCurrentPersonaName(groupId);
     return personas[name] || personas.assistant || '我是AI助手';
-  }
-
-  /** 调用AI */
-  async callAI(messages, model) {
-    try {
-      const response = await fetch(`${config.ai?.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.ai?.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: model || config.ai?.chatModel || 'gpt-3.5-turbo',
-          messages: messages,
-          temperature: config.ai?.temperature || 0.8,
-          max_tokens: config.ai?.max_tokens || 6000,
-          top_p: config.ai?.top_p || 0.9,
-          presence_penalty: config.ai?.presence_penalty || 0.6,
-          frequency_penalty: config.ai?.frequency_penalty || 0.6
-        }),
-        timeout: 30000
-      });
-
-      if (!response.ok) {
-        throw new Error(`API错误: ${response.status}`);
-      }
-
-      const result = await response.json();
-      return result.choices?.[0]?.message?.content || null;
-    } catch (error) {
-      logger.error(`[XRK-AI] API调用失败: ${error.message}`);
-      return null;
-    }
   }
 
   /** 保存任务 */
@@ -1257,7 +1026,7 @@ ${e.isMaster ? '5. 对主人要特别友好和尊重' : ''}`;
     }
   }
 
-  /** 调度任务 - 修复循环触发 */
+  /** 调度任务 */
   scheduleTask(task) {
     try {
       // 防止重复调度
