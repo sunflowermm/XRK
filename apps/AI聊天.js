@@ -7,7 +7,6 @@ import FormData from 'form-data';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
-import plugin from '../../lib/plugins/plugin.js';
 
 const _path = process.cwd();
 
