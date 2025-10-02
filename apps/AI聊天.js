@@ -1,7 +1,7 @@
 import path from 'path';
 import YAML from 'yaml';
 import schedule from 'node-schedule';
-import BotUtil from '../../lib/common/util.js';
+import BotUtil from '../../../lib/common/util.js';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
 
 const _path = process.cwd();
