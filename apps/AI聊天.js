@@ -249,7 +249,6 @@ export class XRKAIAssistant extends plugin {
         if (isGlobalTrigger) {
           return false;
         }
-        await e.reply('处理失败，请稍后重试');
         return true;
       }
 
