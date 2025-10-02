@@ -1,29 +1,20 @@
 import path from 'path';
-import YAML from 'yaml';
-import schedule from 'node-schedule';
-import StreamLoader from '../../../lib/aistream/loader.js';  // 统一相对路径
+import plugin from '../lib/plugins/plugin.js';
+import BotUtil from '../lib/common/util.js';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
-
 const _path = process.cwd();
-
-const scheduledTasks = new Map();
-const globalAIState = new Map();
-const groupPersonas = new Map();
-const messageHistory = new Map();
-const userCache = new Map();
-const TASKS_PATH = path.join(_path, 'data/xrk-ai-tasks.yaml');
+const PERSONAS_DIR = path.join(_path, 'plugins/XRK/config/ai-assistant/personas');
 
 let config = null;
-
-function randomRange(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+let personas = {};
+const globalAIState = new Map();
+const groupPersonas = new Map();
 
 export class XRKAIAssistant extends plugin {
   constructor() {
     super({
       name: 'XRK-AI助手',
-      dsc: '智能AI助手（工作流版本）',
+      dsc: '智能AI助手，支持群管理、定时任务、识图等',
       event: 'message',
       priority: 99999,
       rule: [
@@ -34,97 +25,63 @@ export class XRKAIAssistant extends plugin {
         }
       ]
     });
+    
+    this.config = 解析向日葵插件yaml();
+    config = this.config;
   }
 
   async init() {
-    config = 解析向日葵插件yaml();
-
-    // 只获取，不load（假设全局已load）
-    this.chatStream = StreamLoader.getStream('chat');
-    this.cleanupStream = StreamLoader.getStream('cleanup');
+    await BotUtil.mkdir(PERSONAS_DIR);
     
-    // 添加调试日志
-    if (!this.chatStream) {
-      logger.error('[XRK-AI] 聊天工作流未找到！请检查StreamLoader是否正确加载了plugins/stream/chat.js');
-    } else {
-      logger.info('[XRK-AI] 成功获取聊天工作流');
-    }
-
-    if (this.chatStream) {
-      const featureConfig = config.ai?.features || {};
-      for (const [feature, enabled] of Object.entries(featureConfig)) {
-        this.chatStream.setFeatureEnabled(feature, enabled);
-      }
+    // 创建默认人设
+    const defaultPersonaPath = path.join(PERSONAS_DIR, 'assistant.txt');
+    if (!await BotUtil.fileExists(defaultPersonaPath)) {
+      await BotUtil.writeFile(defaultPersonaPath, `我是${Bot.nickname}，一个智能AI助手。
+我会认真观察群聊，适时发表评论和互动。
+喜欢用表情回应别人的消息，也会戳一戳活跃气氛。
+对不同的人有不同的态度，记得每个人的名字。
+会根据聊天氛围选择合适的表情和互动方式。`);
     }
     
-    await this.loadScheduledTasks();
-    
-    setInterval(() => this.cleanupCache(), 300000);
-    
-    logger.info('[XRK-AI] AI助手（工作流版本）初始化完成');
+    personas = await this.loadPersonas();
+    logger.info('[XRK-AI] AI助手初始化完成');
   }
 
   async handleMessage(e) {
-    this.recordMessageHistory(e);
-    
-    if (e.isMaster) {
-      if (e.msg?.startsWith('#AI')) {
-        return await this.handleAdminCommands(e);
+    try {
+      const chatStream = this.getStream('chat');
+      if (chatStream) {
+        chatStream.recordMessage(e);
       }
       
-      if (e.msg?.startsWith('#清理')) {
-        return await this.handleCleanupCommand(e);
+      // 管理命令
+      if (e.isMaster && e.msg?.startsWith('#AI')) {
+        return await this.handleAdminCommands(e);
       }
-    }
 
-    if (await this.shouldTriggerAI(e)) {
-      return await this.processAI(e);
+      // AI处理
+      if (await this.shouldTriggerAI(e)) {
+        return await this.processAI(e);
+      }
+    } catch (error) {
+      logger.error(`[XRK-AI] 消息处理错误: ${error.message}`);
     }
     
     return false;
   }
 
-  recordMessageHistory(e) {
-    if (!e.isGroup) return;
-    
-    const groupId = e.group_id;
-    if (!messageHistory.has(groupId)) {
-      messageHistory.set(groupId, []);
+  async loadPersonas() {
+    const personasMap = {};
+    try {
+      const files = await BotUtil.glob(path.join(PERSONAS_DIR, '*.txt'));
+      for (const file of files) {
+        const name = path.basename(file, '.txt');
+        personasMap[name] = await BotUtil.readFile(file, 'utf8');
+      }
+    } catch (error) {
+      logger.error(`[XRK-AI] 加载人设失败: ${error.message}`);
     }
-    
-    const history = messageHistory.get(groupId);
-    let cqMessage = e.raw_message || '';
-    
-    if (e.message && Array.isArray(e.message)) {
-      cqMessage = e.message.map(seg => {
-        switch (seg.type) {
-          case 'text':
-            return seg.text;
-          case 'image':
-            return `[图片]`;
-          case 'at':
-            return `[CQ:at,qq=${seg.qq}]`;
-          case 'reply':
-            return `[CQ:reply,id=${seg.id}]`;
-          default:
-            return '';
-        }
-      }).join('');
-    }
-    
-    history.push({
-      user_id: e.user_id,
-      nickname: e.sender?.card || e.sender?.nickname || '未知',
-      role: e.sender?.role || 'member',
-      message: cqMessage,
-      message_id: e.message_id,
-      time: Date.now(),
-      hasImage: e.img?.length > 0
-    });
-    
-    if (history.length > 30) {
-      history.shift();
-    }
+    return personasMap;
   }
 
   async shouldTriggerAI(e) {
@@ -138,13 +95,13 @@ export class XRKAIAssistant extends plugin {
       }
     };
     
-    if (e.atBot) {
-      return isInWhitelist();
-    }
+    if (e.atBot) return isInWhitelist();
     
     const triggerPrefix = config.ai?.triggerPrefix;
-    if (triggerPrefix && e.msg?.startsWith(triggerPrefix)) {
-      return isInWhitelist();
+    if (triggerPrefix !== undefined && triggerPrefix !== null && triggerPrefix !== '') {
+      if (e.msg?.startsWith(triggerPrefix)) {
+        return isInWhitelist();
+      }
     }
     
     if (!e.isGroup) return false;
@@ -152,9 +109,7 @@ export class XRKAIAssistant extends plugin {
     const globalWhitelist = (config.ai?.globalWhitelist || []).map(id => Number(id));
     const groupIdNum = Number(e.group_id);
     
-    if (!globalWhitelist.includes(groupIdNum)) {
-      return false;
-    }
+    if (!globalWhitelist.includes(groupIdNum)) return false;
     
     const groupId = e.group_id;
     const state = globalAIState.get(groupId) || { 
@@ -196,76 +151,61 @@ export class XRKAIAssistant extends plugin {
   }
 
   async processAI(e) {
-    // 添加防护：如果chatStream未加载，直接返回
-    if (!this.chatStream) {
-      logger.error('[XRK-AI] 聊天工作流未加载，无法处理AI消息');
-      return false;
-    }
-
-    const groupId = e.group_id || `private_${e.user_id}`;
-    
-    const isGlobalTrigger = !e.atBot && 
-      (config.ai?.triggerPrefix === undefined || 
-       config.ai?.triggerPrefix === null || 
-       config.ai?.triggerPrefix === '' || 
-       !e.msg?.startsWith(config.ai.triggerPrefix));
-    
-    let question = await this.processMessageContent(e);
-    
-    if (!isGlobalTrigger && !question && !e.img?.length) {
-      // 这里是报错点，再次防护（虽然上面已有）
-      await this.chatStream.sendResponse({ e }, {
-        text: ['有什么需要帮助的吗？'],
-        emotions: ['惊讶'],
-        functions: [],
-        segments: ['[惊讶]有什么需要帮助的吗？']
-      });
-      return true;
-    }
-    
-    const history = messageHistory.get(e.group_id) || [];
-    const relevantHistory = isGlobalTrigger ? 
-      history.slice(-15) : 
-      history.slice(-(config.ai?.historyLimit || 10));
-    
-    const personaName = groupPersonas.get(groupId) || 
-                       config.ai?.defaultPersona || 'assistant';
-    this.chatStream.currentPersona = personaName;
-    
-    const context = {
-      e,
-      question,
-      history: relevantHistory,
-      isGlobalTrigger,
-      groupId
-    };
-    
-    const streamConfig = {
-      config: {
-        ai: {
-          baseUrl: config.ai?.baseUrl,
-          apiKey: config.ai?.apiKey,
-          model: config.ai?.chatModel || 'gpt-3.5-turbo',
-          temperature: config.ai?.temperature || 0.8,
-          maxTokens: config.ai?.max_tokens || 6000,
-          top_p: config.ai?.top_p || 0.9,
-          presence_penalty: config.ai?.presence_penalty || 0.6,
-          frequency_penalty: config.ai?.frequency_penalty || 0.6
-        }
-      }
-    };
-    
-    const result = await this.chatStream.process(context, streamConfig);
-    
-    if (!result.success) {
-      if (isGlobalTrigger) {
-        logger.debug('[XRK-AI] 全局AI响应失败，静默处理');
+    try {
+      const chatStream = this.getStream('chat');
+      if (!chatStream) {
+        logger.error('[XRK-AI] 聊天工作流未加载');
         return false;
       }
+      
+      const isGlobalTrigger = !e.atBot && 
+        (config.ai?.triggerPrefix === undefined || 
+         config.ai?.triggerPrefix === null || 
+         config.ai?.triggerPrefix === '' || 
+         !e.msg?.startsWith(config.ai.triggerPrefix));
+      
+      let question = await this.processMessageContent(e);
+      if (!isGlobalTrigger && !question && !e.img?.length) {
+        const emotionImage = chatStream.getRandomEmotionImage('惊讶');
+        if (emotionImage) {
+          await e.reply(segment.image(emotionImage));
+          await BotUtil.sleep(300);
+        }
+        await e.reply('有什么需要帮助的吗？');
+        return true;
+      }
+      
+      // 准备工作流上下文
+      const groupId = e.group_id || `private_${e.user_id}`;
+      const persona = this.getCurrentPersona(groupId);
+      question = { ...question, persona, isGlobalTrigger };
+      
+      // 调用工作流处理
+      const result = await chatStream.process(e, question, {
+        baseUrl: config.ai?.baseUrl,
+        apiKey: config.ai?.apiKey,
+        model: config.ai?.chatModel,
+        temperature: config.ai?.temperature,
+        maxTokens: config.ai?.max_tokens,
+        topP: config.ai?.top_p,
+        presencePenalty: config.ai?.presence_penalty,
+        frequencyPenalty: config.ai?.frequency_penalty
+      });
+      
+      if (!result) {
+        if (isGlobalTrigger) {
+          logger.debug('[XRK-AI] 全局AI响应失败，静默处理');
+          return false;
+        }
+        return true;
+      }
+
+      await this.processStreamResponse(e, result, chatStream);
       return true;
+    } catch (error) {
+      logger.error(`[XRK-AI] AI处理失败: ${error.message}`);
+      return false;
     }
-    
-    return true;
   }
 
   async processMessageContent(e) {
@@ -276,75 +216,94 @@ export class XRKAIAssistant extends plugin {
       return e.msg || '';
     }
     
-    if (e.source && e.getReply) {
-      const reply = await e.getReply();
-      if (reply) {
-        const nickname = reply.sender?.card || reply.sender?.nickname || '未知';
-        content += `[回复${nickname}的"${reply.raw_message.substring(0, 30)}..."] `;
-      }
-    }
-    
-    for (const seg of message) {
-      switch (seg.type) {
-        case 'text':
-          content += seg.text;
-          break;
-        case 'at':
-          if (seg.qq != e.self_id) {
-            const member = e.group?.pickMember(seg.qq);
-            const info = await member?.getInfo();
-            const nickname = info?.card || info?.nickname || seg.qq;
-            content += `@${nickname} `;
+    try {
+      if (e.source && e.getReply) {
+        try {
+          const reply = await e.getReply();
+          if (reply) {
+            const nickname = reply.sender?.card || reply.sender?.nickname || '未知';
+            content += `[回复${nickname}的"${reply.raw_message.substring(0, 30)}..."] `;
           }
-          break;
-        case 'image':
-          if (config.ai?.visionModel) {
-            const desc = await this.processImageWithVision(seg.url || seg.file);
-            content += `[图片:${desc}] `;
-          } else {
-            content += '[图片] ';
-          }
-          break;
+        } catch {}
       }
-    }
-    
-    if (config.ai?.triggerPrefix && config.ai.triggerPrefix !== '') {
-      content = content.replace(new RegExp(`^${config.ai.triggerPrefix}`), '');
-    }
-    
-    return content.trim();
-  }
-
-  async processImageWithVision(imageUrl) {
-    return '一张图片';
-  }
-
-  async handleCleanupCommand(e) {
-    // 添加防护
-    if (!this.cleanupStream) {
-      await e.reply('清理工作流未加载，无法执行清理');
-      return true;
-    }
-
-    const context = {
-      e,
-      question: e.msg.replace('#清理', '').trim() || '请帮我清理系统垃圾'
-    };
-    
-    const streamConfig = {
-      config: {
-        ai: {
-          baseUrl: config.ai?.baseUrl,
-          apiKey: config.ai?.apiKey,
-          model: config.ai?.chatModel || 'gpt-3.5-turbo',
-          temperature: 0.5,
-          maxTokens: 1000
+      
+      for (const seg of message) {
+        switch (seg.type) {
+          case 'text':
+            content += seg.text;
+            break;
+          case 'at':
+            if (seg.qq != e.self_id) {
+              try {
+                const member = e.group?.pickMember(seg.qq);
+                const info = await member?.getInfo();
+                const nickname = info?.card || info?.nickname || seg.qq;
+                content += `@${nickname} `;
+              } catch {
+                content += `@${seg.qq} `;
+              }
+            }
+            break;
+          case 'image':
+            content += `[图片] `;
+            break;
         }
       }
-    };
-    
-    await this.cleanupStream.process(context, streamConfig);
-    return true;
+      
+      if (config.ai?.triggerPrefix && config.ai.triggerPrefix !== '') {
+        content = content.replace(new RegExp(`^${config.ai.triggerPrefix}`), '');
+      }
+      
+      return content.trim();
+    } catch (error) {
+      logger.error(`[XRK-AI] 处理消息内容失败: ${error.message}`);
+      return e.msg || '';
+    }
+  }
+
+  async processStreamResponse(e, result, stream) {
+    try {
+      let emotionSent = false;
+      
+      for (let i = 0; i < result.segments.length; i++) {
+        const segment = result.segments[i];
+        
+        // 发送表情包（只发第一个）
+        if (!emotionSent) {
+          const emotionFunc = segment.functions.find(f => f.type === 'emotion');
+          if (emotionFunc) {
+            await stream.executeFunction(emotionFunc, { e, stream });
+            emotionSent = true;
+          }
+        }
+        
+        // 发送文本
+        if (segment.textParts.length > 0) {
+          const msgSegments = [];
+          for (const part of segment.textParts) {
+            const cqSegments = await stream.parseCQCodes(part, e);
+            msgSegments.push(...cqSegments);
+          }
+          
+          if (msgSegments.length > 0) {
+            await e.reply(msgSegments, Math.random() > 0.5);
+          }
+        }
+        
+        // 执行其他功能
+        for (const func of segment.functions) {
+          if (func.type !== 'emotion') {
+            await stream.executeFunction(func, { e, stream });
+          }
+        }
+        
+        if (i < result.segments.length - 1) {
+          await BotUtil.sleep(BotUtil.randomRange(800, 1500));
+        }
+      }
+    } catch (error) {
+      logger.error(`[XRK-AI] 处理工作流响应失败: ${error.message}`);
+    }
   }
 
   async handleAdminCommands(e) {
@@ -353,43 +312,45 @@ export class XRKAIAssistant extends plugin {
     if (msg === '#AI帮助') {
       return await this.showHelp(e);
     }
-    if (msg === '#AI状态') {
-      return await this.showStatus(e);
-    }
-    if (/^#AI切换人设\s*(.+)$/.test(msg)) {
+    else if (/^#AI切换人设\s*(.+)$/.test(msg)) {
       const persona = msg.match(/^#AI切换人设\s*(.+)$/)[1];
       return await this.switchPersona(e, persona);
     }
-    if (msg === '#AI当前人设') {
+    else if (msg === '#AI当前人设') {
       return await this.showCurrentPersona(e);
     }
-    if (msg === '#AI功能列表') {
-      return await this.showFeatures(e);
+    else if (msg === '#AI人设列表') {
+      return await this.listPersonas(e);
     }
-    if (/^#AI(启用|禁用)功能\s*(.+)$/.test(msg)) {
-      const [, action, feature] = msg.match(/^#AI(启用|禁用)功能\s*(.+)$/);
-      return await this.toggleFeature(e, feature, action === '启用');
-    }
-    if (/^#AI添加全局\s*(\d+)?$/.test(msg)) {
+    else if (/^#AI添加全局\s*(\d+)?$/.test(msg)) {
       const groupId = msg.match(/(\d+)$/)?.[1] || e.group_id;
       return await this.addGlobalWhitelist(e, groupId);
     }
-    if (/^#AI移除全局\s*(\d+)?$/.test(msg)) {
+    else if (/^#AI移除全局\s*(\d+)?$/.test(msg)) {
       const groupId = msg.match(/(\d+)$/)?.[1] || e.group_id;
       return await this.removeGlobalWhitelist(e, groupId);
     }
-    if (msg === '#AI查看全局') {
+    else if (msg === '#AI查看全局') {
       return await this.showGlobalWhitelist(e);
     }
-    if (msg === '#AI重载') {
-      await StreamLoader.reload();
-      this.chatStream = StreamLoader.getStream('chat');
-      this.cleanupStream = StreamLoader.getStream('cleanup');
-      await e.reply('工作流系统已重载');
+    else if (msg === '#AI重载人设') {
+      personas = await this.loadPersonas();
+      const chatStream = this.getStream('chat');
+      if (chatStream) {
+        await chatStream.loadEmotionImages();
+      }
+      await e.reply('人设和表情包已重新加载');
       return true;
     }
-    if (msg === '#AI工作流') {
-      return await this.showStreams(e);
+    else if (msg === '#AI工作流列表') {
+      return await this.listStreams(e);
+    }
+    else if (/^#AI切换工作流\s*(.+)$/.test(msg)) {
+      const streamName = msg.match(/^#AI切换工作流\s*(.+)$/)[1];
+      return await this.switchStream(e, streamName);
+    }
+    else if (msg === '#AI状态') {
+      return await this.showStatus(e);
     }
     
     return false;
@@ -398,102 +359,27 @@ export class XRKAIAssistant extends plugin {
   async showHelp(e) {
     const help = `【AI助手管理命令】
 #AI帮助 - 显示此帮助
-#AI状态 - 查看运行状态
 #AI切换人设 <人设名> - 切换人设
 #AI当前人设 - 查看当前人设
-#AI功能列表 - 查看所有功能
-#AI启用功能 <功能名> - 启用功能
-#AI禁用功能 <功能名> - 禁用功能
+#AI人设列表 - 查看可用人设
 #AI添加全局 [群号] - 添加全局AI
 #AI移除全局 [群号] - 移除全局AI
 #AI查看全局 - 查看全局AI列表
-#AI重载 - 重载工作流系统
-#AI工作流 - 查看已加载的工作流
-
-【清理命令】
-#清理 - 执行系统清理
-#清理缓存 - 清理缓存文件
-#清理日志 - 清理过期日志
+#AI重载人设 - 重新加载人设和表情包
+#AI工作流列表 - 查看工作流
+#AI切换工作流 <名称> - 切换工作流
+#AI状态 - 查看运行状态
 
 【功能说明】
-• 工作流系统：模块化的AI功能管理
-• 支持动态启用/禁用功能
-• 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%
-• 冷却时间：${config.ai?.globalAICooldown || 300}秒`;
+• 触发方式：@机器人、前缀触发
+• 全局AI：在白名单群自动参与聊天
+• 工作流系统：支持多种AI处理模式`;
     
     await e.reply(help);
     return true;
   }
 
-  async showStatus(e) {
-    const chatInfo = this.chatStream ? this.chatStream.getInfo() : null;
-    const cleanupInfo = this.cleanupStream ? this.cleanupStream.getInfo() : null;
-    
-    const status = [
-      `【AI助手运行状态】`,
-      `• 工作流系统：${StreamLoader.getAllStreams().length}个工作流`,
-      `• 消息缓存：${messageHistory.size}个群`,
-      `• 用户缓存：${userCache.size}条`,
-      `• 定时任务：${scheduledTasks.size}个`,
-      `• 普通白名单群：${(config.ai?.whitelist?.groups || []).length}个`,
-      `• 全局AI群：${(config.ai?.globalWhitelist || []).length}个`,
-      `• 触发前缀：${config.ai?.triggerPrefix || '无'}`,
-      `• 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%`,
-      `• 冷却时间：${config.ai?.globalAICooldown || 300}秒`,
-      '',
-      `【已加载工作流】`
-    ];
-    
-    if (chatInfo) {
-      status.push(`• 聊天工作流 v${chatInfo.version} - ${chatInfo.features.filter(f => f.enabled).length}/${chatInfo.features.length}个功能启用`);
-    }
-    
-    if (cleanupInfo) {
-      status.push(`• 清理工作流 v${cleanupInfo.version} - ${cleanupInfo.features.filter(f => f.enabled).length}/${cleanupInfo.features.length}个功能启用`);
-    }
-    
-    await e.reply(status.join('\n'));
-    return true;
-  }
-
-  async showFeatures(e) {
-    if (!this.chatStream) {
-      await e.reply('聊天工作流未加载，无法显示功能列表');
-      return true;
-    }
-    const info = this.chatStream.getInfo();
-    const features = info.features.map(f => 
-      `• ${f.name}${f.description ? `(${f.description})` : ''} - ${f.enabled ? '✓启用' : '✗禁用'}`
-    );
-    
-    await e.reply(`【聊天工作流功能】\n${features.join('\n')}`);
-    return true;
-  }
-
-  async toggleFeature(e, featureName, enabled) {
-    if (!this.chatStream) {
-      await e.reply('聊天工作流未加载，无法切换功能');
-      return true;
-    }
-    this.chatStream.setFeatureEnabled(featureName, enabled);
-    
-    const cfg = 解析向日葵插件yaml();
-    if (!cfg.ai) cfg.ai = {};
-    if (!cfg.ai.features) cfg.ai.features = {};
-    cfg.ai.features[featureName] = enabled;
-    await 保存yaml(path.join(_path, 'data/xrkconfig/config.yaml'), cfg);
-    config = cfg;
-    
-    await e.reply(`已${enabled ? '启用' : '禁用'}功能：${featureName}`);
-    return true;
-  }
-
   async switchPersona(e, personaName) {
-    if (!this.chatStream) {
-      await e.reply('聊天工作流未加载，无法切换人设');
-      return true;
-    }
-    const personas = this.chatStream.personas;
     if (!personas[personaName]) {
       await e.reply(`未找到人设"${personaName}"\n可用：${Object.keys(personas).join('、')}`);
       return true;
@@ -502,36 +388,30 @@ export class XRKAIAssistant extends plugin {
     const groupId = e.group_id || `private_${e.user_id}`;
     groupPersonas.set(groupId, personaName);
     
+    const chatStream = this.getStream('chat');
+    const emotionImage = chatStream?.getRandomEmotionImage('开心');
+    if (emotionImage) {
+      await e.reply(segment.image(emotionImage));
+    }
     await e.reply(`已切换到人设"${personaName}"`);
     return true;
   }
 
   async showCurrentPersona(e) {
-    if (!this.chatStream) {
-      await e.reply('聊天工作流未加载，无法显示人设');
-      return true;
-    }
     const groupId = e.group_id || `private_${e.user_id}`;
-    const personaName = groupPersonas.get(groupId) || 
-                       config.ai?.defaultPersona || 'assistant';
+    const personaName = this.getCurrentPersonaName(groupId);
+    const content = personas[personaName];
     
-    if (this.chatStream.personas[personaName]) {
-      const content = this.chatStream.personas[personaName];
-      await e.reply(`当前人设：${personaName}\n\n${content.substring(0, 100)}...`);
-    } else {
-      await e.reply(`当前人设：${personaName}（未找到人设文件）`);
-    }
+    await e.reply(`当前人设：${personaName}\n\n${content.substring(0, 100)}...`);
     return true;
   }
 
-  async showStreams(e) {
-    const streams = StreamLoader.getAllStreams();
-    const list = streams.map(stream => {
-      const info = stream.getInfo();
-      return `【${info.name}】v${info.version}\n${info.description}\n功能数：${info.features.length}`;
-    });
+  async listPersonas(e) {
+    const list = Object.keys(personas).map(name => 
+      `【${name}】\n${personas[name].substring(0, 50)}...`
+    ).join('\n\n');
     
-    await e.reply(`已加载工作流：\n\n${list.join('\n\n')}`);
+    await e.reply(`可用人设列表：\n\n${list}`);
     return true;
   }
 
@@ -550,6 +430,7 @@ export class XRKAIAssistant extends plugin {
       cfg.ai.globalWhitelist.push(gid);
       await 保存yaml(path.join(_path, 'data/xrkconfig/config.yaml'), cfg);
       config = cfg;
+      
       await e.reply(`已添加群${gid}到全局AI白名单`);
     } else {
       await e.reply(`群${gid}已在白名单中`);
@@ -569,6 +450,7 @@ export class XRKAIAssistant extends plugin {
       cfg.ai.globalWhitelist = cfg.ai.globalWhitelist.filter(g => g !== gid);
       await 保存yaml(path.join(_path, 'data/xrkconfig/config.yaml'), cfg);
       config = cfg;
+      
       await e.reply(`已移除群${gid}的全局AI`);
     }
     return true;
@@ -584,80 +466,65 @@ export class XRKAIAssistant extends plugin {
     return true;
   }
 
-  async loadScheduledTasks() {
-    const tasks = await this.loadTasks();
-    const now = new Date();
+  async listStreams(e) {
+    const streams = this.getAllStreams();
+    if (streams.length === 0) {
+      await e.reply('暂无工作流');
+      return true;
+    }
     
-    Object.values(tasks).forEach(task => {
-      if (new Date(task.time) > now) {
-        this.scheduleTask(task);
-      }
-    });
+    const list = streams.map(s => {
+      const status = s.config.enabled ? '✓' : '✗';
+      return `${status} ${s.name} - ${s.description} (v${s.version})`;
+    }).join('\n');
     
-    logger.info(`[XRK-AI] 加载了${Object.keys(tasks).length}个定时任务`);
+    await e.reply(`工作流列表：\n${list}`);
+    return true;
   }
 
-  async loadTasks() {
-    if (!await Bot.fileExists(TASKS_PATH)) {
-      await Bot.writeFile(TASKS_PATH, YAML.stringify({}));
-      return {};
+  async switchStream(e, streamName) {
+    const stream = this.getStream(streamName);
+    if (!stream) {
+      await e.reply(`未找到工作流"${streamName}"`);
+      return true;
     }
-    const content = await Bot.readFile(TASKS_PATH, 'utf8');
-    return YAML.parse(content) || {};
+    
+    await e.reply(`当前使用工作流：${stream.name}\n${stream.description}`);
+    return true;
   }
 
-  scheduleTask(task) {
-    if (scheduledTasks.has(task.id)) {
-      const existingJob = scheduledTasks.get(task.id);
-      existingJob.cancel();
-      scheduledTasks.delete(task.id);
+  async showStatus(e) {
+    const streams = this.getAllStreams();
+    const chatStream = this.getStream('chat');
+    
+    const status = [
+      `【AI助手运行状态】`,
+      `• 工作流数量：${streams.length}个`,
+      `• 普通白名单群：${(config.ai?.whitelist?.groups || []).length}个`,
+      `• 全局AI群：${(config.ai?.globalWhitelist || []).length}个`,
+      `• 触发前缀：${config.ai?.triggerPrefix || '无'}`,
+      `• 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%`,
+      `• 冷却时间：${config.ai?.globalAICooldown || 300}秒`,
+      `• 人设数量：${Object.keys(personas).length}个`
+    ];
+    
+    if (chatStream) {
+      const emotionStats = Object.entries(chatStream.emotionImages)
+        .map(([emotion, images]) => `${emotion}:${images.length}张`)
+        .join(' ');
+      status.push(`• 表情包：${emotionStats}`);
     }
     
-    const taskTime = new Date(task.time);
-    
-    const job = schedule.scheduleJob(taskTime, async () => {
-      const msg = `【定时提醒】${task.content}`;
-      if (task.group) {
-        await Bot.sendGroupMsg(task.group, msg);
-      } else if (task.private) {
-        await Bot.sendPrivateMsg(task.private, msg);
-      }
-      
-      const tasks = await this.loadTasks();
-      delete tasks[task.id];
-      await Bot.writeFile(TASKS_PATH, YAML.stringify(tasks));
-      
-      scheduledTasks.delete(task.id);
-      logger.info(`[XRK-AI] 任务${task.id}执行完成`);
-    });
-    
-    scheduledTasks.set(task.id, job);
+    await e.reply(status.join('\n'));
+    return true;
   }
 
-  cleanupCache() {
-    const now = Date.now();
-    
-    for (const [groupId, messages] of messageHistory.entries()) {
-      const filtered = messages.filter(msg => now - msg.time < 1800000);
-      if (filtered.length === 0) {
-        messageHistory.delete(groupId);
-      } else {
-        messageHistory.set(groupId, filtered);
-      }
-    }
-    
-    for (const [key, data] of userCache.entries()) {
-      if (now - data.time > 300000) {
-        userCache.delete(key);
-      }
-    }
-    
-    for (const [groupId, state] of globalAIState.entries()) {
-      if (now - state.lastMessageTime > 3600000) {
-        globalAIState.delete(groupId);
-      }
-    }
-    
-    logger.debug(`[XRK-AI] 缓存清理完成`);
+  getCurrentPersonaName(groupId) {
+    return groupPersonas.get(groupId) || config.ai?.defaultPersona || 'assistant';
+  }
+
+  getCurrentPersona(groupId) {
+    const name = this.getCurrentPersonaName(groupId);
+    return personas[name] || personas.assistant || '我是AI助手';
   }
 }
