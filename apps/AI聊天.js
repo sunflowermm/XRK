@@ -1,6 +1,5 @@
 import path from 'path';
-import plugin from '../lib/plugins/plugin.js';
-import BotUtil from '../lib/common/util.js';
+import BotUtil from '../../../lib/common/util.js';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
 const _path = process.cwd();
 const PERSONAS_DIR = path.join(_path, 'plugins/XRK/config/ai-assistant/personas');
