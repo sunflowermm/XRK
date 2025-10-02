@@ -1,7 +1,7 @@
 import path from 'path';
 import YAML from 'yaml';
 import schedule from 'node-schedule';
-import StreamLoader from '../../../lib/aistream/loader.js';
+import StreamLoader from '../../lib/aistream/loader.js';  // 统一相对路径
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
 
 const _path = process.cwd();
@@ -39,17 +39,22 @@ export class XRKAIAssistant extends plugin {
   async init() {
     config = 解析向日葵插件yaml();
 
+    // 只获取，不load（假设全局已load）
     this.chatStream = StreamLoader.getStream('chat');
     this.cleanupStream = StreamLoader.getStream('cleanup');
     
+    // 添加调试日志
     if (!this.chatStream) {
-      logger.error('[XRK-AI] 聊天工作流未找到');
-      return;
+      logger.error('[XRK-AI] 聊天工作流未找到！请检查StreamLoader是否正确加载了plugins/stream/chat.js');
+    } else {
+      logger.info('[XRK-AI] 成功获取聊天工作流');
     }
 
-    const featureConfig = config.ai?.features || {};
-    for (const [feature, enabled] of Object.entries(featureConfig)) {
-      this.chatStream.setFeatureEnabled(feature, enabled);
+    if (this.chatStream) {
+      const featureConfig = config.ai?.features || {};
+      for (const [feature, enabled] of Object.entries(featureConfig)) {
+        this.chatStream.setFeatureEnabled(feature, enabled);
+      }
     }
     
     await this.loadScheduledTasks();
@@ -191,6 +196,12 @@ export class XRKAIAssistant extends plugin {
   }
 
   async processAI(e) {
+    // 添加防护：如果chatStream未加载，直接返回
+    if (!this.chatStream) {
+      logger.error('[XRK-AI] 聊天工作流未加载，无法处理AI消息');
+      return false;
+    }
+
     const groupId = e.group_id || `private_${e.user_id}`;
     
     const isGlobalTrigger = !e.atBot && 
@@ -202,6 +213,7 @@ export class XRKAIAssistant extends plugin {
     let question = await this.processMessageContent(e);
     
     if (!isGlobalTrigger && !question && !e.img?.length) {
+      // 这里是报错点，再次防护（虽然上面已有）
       await this.chatStream.sendResponse({ e }, {
         text: ['有什么需要帮助的吗？'],
         emotions: ['惊讶'],
@@ -308,6 +320,12 @@ export class XRKAIAssistant extends plugin {
   }
 
   async handleCleanupCommand(e) {
+    // 添加防护
+    if (!this.cleanupStream) {
+      await e.reply('清理工作流未加载，无法执行清理');
+      return true;
+    }
+
     const context = {
       e,
       question: e.msg.replace('#清理', '').trim() || '请帮我清理系统垃圾'
@@ -439,6 +457,10 @@ export class XRKAIAssistant extends plugin {
   }
 
   async showFeatures(e) {
+    if (!this.chatStream) {
+      await e.reply('聊天工作流未加载，无法显示功能列表');
+      return true;
+    }
     const info = this.chatStream.getInfo();
     const features = info.features.map(f => 
       `• ${f.name}${f.description ? `(${f.description})` : ''} - ${f.enabled ? '✓启用' : '✗禁用'}`
@@ -449,6 +471,10 @@ export class XRKAIAssistant extends plugin {
   }
 
   async toggleFeature(e, featureName, enabled) {
+    if (!this.chatStream) {
+      await e.reply('聊天工作流未加载，无法切换功能');
+      return true;
+    }
     this.chatStream.setFeatureEnabled(featureName, enabled);
     
     const cfg = 解析向日葵插件yaml();
@@ -463,6 +489,10 @@ export class XRKAIAssistant extends plugin {
   }
 
   async switchPersona(e, personaName) {
+    if (!this.chatStream) {
+      await e.reply('聊天工作流未加载，无法切换人设');
+      return true;
+    }
     const personas = this.chatStream.personas;
     if (!personas[personaName]) {
       await e.reply(`未找到人设"${personaName}"\n可用：${Object.keys(personas).join('、')}`);
@@ -477,6 +507,10 @@ export class XRKAIAssistant extends plugin {
   }
 
   async showCurrentPersona(e) {
+    if (!this.chatStream) {
+      await e.reply('聊天工作流未加载，无法显示人设');
+      return true;
+    }
     const groupId = e.group_id || `private_${e.user_id}`;
     const personaName = groupPersonas.get(groupId) || 
                        config.ai?.defaultPersona || 'assistant';
