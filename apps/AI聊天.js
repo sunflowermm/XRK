@@ -1,13 +1,22 @@
 import path from 'path';
+import fetch from 'node-fetch';
+import fs from 'fs';
+import FormData from 'form-data';
+import { promisify } from 'util';
+import { pipeline } from 'stream';
 import BotUtil from '../../../lib/common/util.js';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
+
 const _path = process.cwd();
 const PERSONAS_DIR = path.join(_path, 'plugins/XRK/config/ai-assistant/personas');
+const TEMP_IMAGE_DIR = path.join(_path, 'data/temp/ai_images');
+
+// 全局状态
+const globalAIState = new Map();
+const groupPersonas = new Map();
 
 let config = null;
 let personas = {};
-const globalAIState = new Map();
-const groupPersonas = new Map();
 
 export class XRKAIAssistant extends plugin {
   constructor() {
@@ -31,6 +40,7 @@ export class XRKAIAssistant extends plugin {
 
   async init() {
     await BotUtil.mkdir(PERSONAS_DIR);
+    await BotUtil.mkdir(TEMP_IMAGE_DIR);
     
     // 创建默认人设
     const defaultPersonaPath = path.join(PERSONAS_DIR, 'assistant.txt');
@@ -43,7 +53,23 @@ export class XRKAIAssistant extends plugin {
     }
     
     personas = await this.loadPersonas();
+    await this.loadScheduledTasks();
+    
     logger.info('[XRK-AI] AI助手初始化完成');
+  }
+
+  async loadPersonas() {
+    const personasMap = {};
+    try {
+      const files = await BotUtil.glob(path.join(PERSONAS_DIR, '*.txt'));
+      for (const file of files) {
+        const name = path.basename(file, '.txt');
+        personasMap[name] = await BotUtil.readFile(file, 'utf8');
+      }
+    } catch (error) {
+      logger.error(`[XRK-AI] 加载人设失败: ${error.message}`);
+    }
+    return personasMap;
   }
 
   async handleMessage(e) {
@@ -67,20 +93,6 @@ export class XRKAIAssistant extends plugin {
     }
     
     return false;
-  }
-
-  async loadPersonas() {
-    const personasMap = {};
-    try {
-      const files = await BotUtil.glob(path.join(PERSONAS_DIR, '*.txt'));
-      for (const file of files) {
-        const name = path.basename(file, '.txt');
-        personasMap[name] = await BotUtil.readFile(file, 'utf8');
-      }
-    } catch (error) {
-      logger.error(`[XRK-AI] 加载人设失败: ${error.message}`);
-    }
-    return personasMap;
   }
 
   async shouldTriggerAI(e) {
@@ -164,6 +176,7 @@ export class XRKAIAssistant extends plugin {
          !e.msg?.startsWith(config.ai.triggerPrefix));
       
       let question = await this.processMessageContent(e);
+      
       if (!isGlobalTrigger && !question && !e.img?.length) {
         const emotionImage = chatStream.getRandomEmotionImage('惊讶');
         if (emotionImage) {
@@ -174,10 +187,15 @@ export class XRKAIAssistant extends plugin {
         return true;
       }
       
-      // 准备工作流上下文
       const groupId = e.group_id || `private_${e.user_id}`;
       const persona = this.getCurrentPersona(groupId);
-      question = { ...question, persona, isGlobalTrigger };
+      
+      // 构造question对象
+      question = {
+        content: question || '',
+        persona,
+        isGlobalTrigger
+      };
       
       // 调用工作流处理
       const result = await chatStream.process(e, question, {
@@ -244,7 +262,8 @@ export class XRKAIAssistant extends plugin {
             }
             break;
           case 'image':
-            content += `[图片] `;
+            const desc = await this.processImage(seg.url || seg.file);
+            content += `[图片:${desc}] `;
             break;
         }
       }
@@ -257,6 +276,95 @@ export class XRKAIAssistant extends plugin {
     } catch (error) {
       logger.error(`[XRK-AI] 处理消息内容失败: ${error.message}`);
       return e.msg || '';
+    }
+  }
+
+  async processImage(imageUrl) {
+    if (!imageUrl || !config.ai?.visionModel) {
+      return '无法识别';
+    }
+    
+    let tempFilePath = null;
+    try {
+      tempFilePath = await this.downloadImage(imageUrl);
+      const uploadedUrl = await this.uploadImageToAPI(tempFilePath);
+      
+      const messages = [
+        {
+          role: 'system',
+          content: '请详细描述这张图片的内容，包括主要对象、场景、颜色、氛围等'
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: uploadedUrl }
+            }
+          ]
+        }
+      ];
+      
+      const result = await this.callAI(messages, config.ai.visionModel);
+      return result || '识图失败';
+      
+    } catch (error) {
+      logger.error(`[XRK-AI] 图片处理失败: ${error.message}`);
+      return '图片处理失败';
+    } finally {
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        try {
+          fs.unlinkSync(tempFilePath);
+        } catch {}
+      }
+    }
+  }
+
+  async downloadImage(url) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`下载失败: ${response.statusText}`);
+      
+      const filename = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
+      const filePath = path.join(TEMP_IMAGE_DIR, filename);
+      
+      await promisify(pipeline)(response.body, fs.createWriteStream(filePath));
+      return filePath;
+    } catch (error) {
+      throw new Error(`图片下载失败: ${error.message}`);
+    }
+  }
+
+  async uploadImageToAPI(filePath) {
+    if (!config.ai?.fileUploadUrl) {
+      throw new Error('未配置文件上传URL');
+    }
+    
+    try {
+      const form = new FormData();
+      const fileBuffer = await fs.promises.readFile(filePath);
+      form.append('file', fileBuffer, {
+        filename: path.basename(filePath),
+        contentType: 'image/png'
+      });
+      
+      const response = await fetch(config.ai.fileUploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.ai.apiKey}`,
+          ...form.getHeaders()
+        },
+        body: form
+      });
+      
+      if (!response.ok) {
+        throw new Error(`上传失败: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result.data?.url || result.url;
+    } catch (error) {
+      throw new Error(`图片上传失败: ${error.message}`);
     }
   }
 
@@ -341,13 +449,6 @@ export class XRKAIAssistant extends plugin {
       await e.reply('人设和表情包已重新加载');
       return true;
     }
-    else if (msg === '#AI工作流列表') {
-      return await this.listStreams(e);
-    }
-    else if (/^#AI切换工作流\s*(.+)$/.test(msg)) {
-      const streamName = msg.match(/^#AI切换工作流\s*(.+)$/)[1];
-      return await this.switchStream(e, streamName);
-    }
     else if (msg === '#AI状态') {
       return await this.showStatus(e);
     }
@@ -365,8 +466,6 @@ export class XRKAIAssistant extends plugin {
 #AI移除全局 [群号] - 移除全局AI
 #AI查看全局 - 查看全局AI列表
 #AI重载人设 - 重新加载人设和表情包
-#AI工作流列表 - 查看工作流
-#AI切换工作流 <名称> - 切换工作流
 #AI状态 - 查看运行状态
 
 【功能说明】
@@ -465,33 +564,6 @@ export class XRKAIAssistant extends plugin {
     return true;
   }
 
-  async listStreams(e) {
-    const streams = this.getAllStreams();
-    if (streams.length === 0) {
-      await e.reply('暂无工作流');
-      return true;
-    }
-    
-    const list = streams.map(s => {
-      const status = s.config.enabled ? '✓' : '✗';
-      return `${status} ${s.name} - ${s.description} (v${s.version})`;
-    }).join('\n');
-    
-    await e.reply(`工作流列表：\n${list}`);
-    return true;
-  }
-
-  async switchStream(e, streamName) {
-    const stream = this.getStream(streamName);
-    if (!stream) {
-      await e.reply(`未找到工作流"${streamName}"`);
-      return true;
-    }
-    
-    await e.reply(`当前使用工作流：${stream.name}\n${stream.description}`);
-    return true;
-  }
-
   async showStatus(e) {
     const streams = this.getAllStreams();
     const chatStream = this.getStream('chat');
@@ -525,5 +597,42 @@ export class XRKAIAssistant extends plugin {
   getCurrentPersona(groupId) {
     const name = this.getCurrentPersonaName(groupId);
     return personas[name] || personas.assistant || '我是AI助手';
+  }
+
+  async callAI(messages, model) {
+    try {
+      const response = await fetch(`${config.ai?.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.ai?.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model || config.ai?.chatModel || 'gpt-3.5-turbo',
+          messages: messages,
+          temperature: config.ai?.temperature || 0.8,
+          max_tokens: config.ai?.max_tokens || 6000,
+          top_p: config.ai?.top_p || 0.9,
+          presence_penalty: config.ai?.presence_penalty || 0.6,
+          frequency_penalty: config.ai?.frequency_penalty || 0.6
+        }),
+        timeout: 30000
+      });
+
+      if (!response.ok) {
+        throw new Error(`API错误: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.choices?.[0]?.message?.content || null;
+    } catch (error) {
+      logger.error(`[XRK-AI] API调用失败: ${error.message}`);
+      return null;
+    }
+  }
+
+  async loadScheduledTasks() {
+    // 定时任务加载逻辑（如果需要）
+    logger.info('[XRK-AI] 定时任务系统已初始化');
   }
 }
