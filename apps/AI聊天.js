@@ -1,7 +1,7 @@
 import path from 'path';
 import YAML from 'yaml';
 import schedule from 'node-schedule';
-import StreamLoader from '../../lib/aistream/loader.js';  // 统一相对路径
+import StreamLoader from '../../../lib/aistream/loader.js';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
 
 const _path = process.cwd();
