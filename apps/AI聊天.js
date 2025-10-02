@@ -37,9 +37,6 @@ export class XRKAIAssistant extends plugin {
     
     this.config = 解析向日葵插件yaml();
     config = this.config;
-    
-    this.chatStream = null;
-    this.cleanupStream = null;
   }
 
   async init() {
