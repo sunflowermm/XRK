@@ -1,17 +1,26 @@
 import path from 'path';
-import BotUtil from '../../../lib/common/util.js';
+import YAML from 'yaml';
+import schedule from 'node-schedule';
+import BotUtil from '../../lib/common/util.js';
 import { 解析向日葵插件yaml, 保存yaml } from '../components/config.js';
 
 const _path = process.cwd();
 const PERSONAS_DIR = path.join(_path, 'plugins/XRK/config/ai-assistant/personas');
+const TASKS_PATH = path.join(_path, 'data/xrk-ai-tasks.yaml');
 
 // 全局存储
 const globalAIState = new Map();
 const groupPersonas = new Map();
+const scheduledTasks = new Map();
 
 // 配置和人设
 let config = null;
 let personas = {};
+
+// 工具函数
+function randomRange(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
 export class XRKAIAssistant extends plugin {
   constructor() {
@@ -50,6 +59,9 @@ export class XRKAIAssistant extends plugin {
     
     // 加载人设
     personas = await this.loadPersonas();
+    
+    // 加载定时任务
+    await this.loadScheduledTasks();
     
     logger.info('[XRK-AI] AI助手初始化完成');
   }
@@ -184,11 +196,11 @@ export class XRKAIAssistant extends plugin {
          config.ai?.triggerPrefix === '' || 
          !e.msg?.startsWith(config.ai.triggerPrefix));
       
-      // 处理消息内容
-      let question = await this.processMessageContent(e);
+      // 处理消息内容（包含识图）
+      let question = await this.processMessageContent(e, chatStream);
       
       // 如果主动触发但没有内容
-      if (!isGlobalTrigger && !question && !e.img?.length) {
+      if (!isGlobalTrigger && !question.content && !question.imageDescriptions?.length) {
         const emotionImage = chatStream.getRandomEmotionImage('惊讶');
         if (emotionImage) {
           await e.reply(segment.image(emotionImage));
@@ -204,8 +216,7 @@ export class XRKAIAssistant extends plugin {
       
       // 构建question对象
       const questionObj = {
-        content: question,
-        text: question,
+        ...question,
         persona,
         isGlobalTrigger
       };
@@ -220,6 +231,8 @@ export class XRKAIAssistant extends plugin {
         topP: config.ai?.top_p,
         presencePenalty: config.ai?.presence_penalty,
         frequencyPenalty: config.ai?.frequency_penalty,
+        visionModel: config.ai?.visionModel,
+        fileUploadUrl: config.ai?.fileUploadUrl,
         timeout: 30000
       };
       
@@ -244,12 +257,13 @@ export class XRKAIAssistant extends plugin {
     }
   }
 
-  async processMessageContent(e) {
+  async processMessageContent(e, chatStream) {
     let content = '';
+    const imageDescriptions = [];
     const message = e.message;
     
     if (!Array.isArray(message)) {
-      return e.msg || '';
+      return { content: e.msg || '', text: e.msg || '' };
     }
     
     try {
@@ -283,7 +297,18 @@ export class XRKAIAssistant extends plugin {
             }
             break;
           case 'image':
-            content += `[图片] `;
+            // 识图处理
+            if (config.ai?.visionModel) {
+              const desc = await chatStream.processImage(seg.url || seg.file, {
+                apiKey: config.ai?.apiKey,
+                baseUrl: config.ai?.baseUrl,
+                visionModel: config.ai?.visionModel,
+                fileUploadUrl: config.ai?.fileUploadUrl
+              });
+              imageDescriptions.push(`[图片:${desc}]`);
+            } else {
+              content += '[图片] ';
+            }
             break;
         }
       }
@@ -293,10 +318,14 @@ export class XRKAIAssistant extends plugin {
         content = content.replace(new RegExp(`^${config.ai.triggerPrefix}`), '');
       }
       
-      return content.trim();
+      return { 
+        content: content.trim(),
+        text: content.trim(),
+        imageDescriptions
+      };
     } catch (error) {
       logger.error(`[XRK-AI] 处理消息内容失败: ${error.message}`);
-      return e.msg || '';
+      return { content: e.msg || '', text: e.msg || '' };
     }
   }
 
@@ -317,7 +346,7 @@ export class XRKAIAssistant extends plugin {
           }
         }
         
-        // 发送文本消息
+        // 发送文本消息（cleanText已经删除了功能标记）
         if (segment.text) {
           const msgSegments = await stream.parseCQCodes(segment.text, e);
           if (msgSegments.length > 0) {
@@ -329,18 +358,158 @@ export class XRKAIAssistant extends plugin {
         // 执行其他功能
         for (const func of segment.functions) {
           if (func.type !== 'emotion') {
-            await stream.executeFunction(func, { e, stream });
+            if (func.type === 'reminder') {
+              // 特殊处理提醒功能
+              await this.createReminder(e, func.params);
+            } else {
+              await stream.executeFunction(func, { e, stream });
+            }
             await BotUtil.sleep(300);
           }
         }
         
         // 延迟到下一段
         if (i < result.segments.length - 1) {
-          await BotUtil.sleep(BotUtil.randomRange(800, 1500));
+          await BotUtil.sleep(randomRange(800, 1500));
         }
       }
     } catch (error) {
       logger.error(`[XRK-AI] 处理工作流响应失败: ${error.message}`);
+    }
+  }
+
+  async createReminder(e, params) {
+    try {
+      const { dateStr, timeStr, content } = params;
+      
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hour, minute] = timeStr.split(':').map(Number);
+      
+      const reminderTime = new Date(year, month - 1, day, hour, minute, 0);
+      
+      if (reminderTime <= new Date()) {
+        await e.reply('提醒时间必须在未来');
+        return;
+      }
+      
+      const task = {
+        id: `reminder_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        type: 'reminder',
+        creator: e.user_id,
+        group: e.group_id,
+        private: !e.isGroup ? e.user_id : null,
+        time: reminderTime.toISOString(),
+        content: content,
+        created: new Date().toISOString()
+      };
+      
+      await this.saveTask(task);
+      this.scheduleTask(task);
+      
+      const chatStream = this.getStream('chat');
+      const emotionImage = chatStream?.getRandomEmotionImage('开心');
+      if (emotionImage) {
+        await e.reply(segment.image(emotionImage));
+        await BotUtil.sleep(300);
+      }
+      await e.reply(`已设置提醒：${dateStr} ${timeStr} "${content}"`);
+    } catch (error) {
+      logger.error(`[XRK-AI] 创建提醒失败: ${error.message}`);
+    }
+  }
+
+  async saveTask(task) {
+    try {
+      const tasks = await this.loadTasks();
+      tasks[task.id] = task;
+      await BotUtil.writeFile(TASKS_PATH, YAML.stringify(tasks));
+    } catch (error) {
+      logger.error(`[XRK-AI] 保存任务失败: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async loadTasks() {
+    try {
+      if (!await BotUtil.fileExists(TASKS_PATH)) {
+        await BotUtil.writeFile(TASKS_PATH, YAML.stringify({}));
+        return {};
+      }
+      const content = await BotUtil.readFile(TASKS_PATH, 'utf8');
+      return YAML.parse(content) || {};
+    } catch (error) {
+      logger.error(`[XRK-AI] 加载任务失败: ${error.message}`);
+      return {};
+    }
+  }
+
+  async loadScheduledTasks() {
+    try {
+      const tasks = await this.loadTasks();
+      const now = new Date();
+      
+      Object.values(tasks).forEach(task => {
+        if (new Date(task.time) > now) {
+          this.scheduleTask(task);
+        }
+      });
+      
+      logger.info(`[XRK-AI] 加载了${Object.keys(tasks).length}个定时任务`);
+    } catch (error) {
+      logger.error(`[XRK-AI] 加载定时任务失败: ${error.message}`);
+    }
+  }
+
+  scheduleTask(task) {
+    try {
+      // 防止重复调度
+      if (scheduledTasks.has(task.id)) {
+        const existingJob = scheduledTasks.get(task.id);
+        existingJob.cancel();
+        scheduledTasks.delete(task.id);
+      }
+      
+      const taskTime = new Date(task.time);
+      
+      const job = schedule.scheduleJob(taskTime, async () => {
+        try {
+          // 执行任务
+          const chatStream = this.getStream('chat');
+          const emotionImage = chatStream?.getRandomEmotionImage('开心');
+          if (emotionImage) {
+            if (task.group) {
+              await Bot.sendGroupMsg(task.group, segment.image(emotionImage));
+            } else if (task.private) {
+              await Bot.sendPrivateMsg(task.private, segment.image(emotionImage));
+            }
+          }
+          
+          const msg = `【定时提醒】${task.content}`;
+          if (task.group) {
+            await Bot.sendGroupMsg(task.group, msg);
+          } else if (task.private) {
+            await Bot.sendPrivateMsg(task.private, msg);
+          }
+          
+          // 删除已执行的任务
+          const tasks = await this.loadTasks();
+          delete tasks[task.id];
+          await BotUtil.writeFile(TASKS_PATH, YAML.stringify(tasks));
+          
+          // 从调度列表中移除
+          scheduledTasks.delete(task.id);
+          
+          logger.info(`[XRK-AI] 任务${task.id}执行完成并已删除`);
+        } catch (err) {
+          logger.error(`[XRK-AI] 任务执行失败: ${err.message}`);
+          scheduledTasks.delete(task.id);
+        }
+      });
+      
+      scheduledTasks.set(task.id, job);
+      logger.info(`[XRK-AI] 任务${task.id}已调度`);
+    } catch (error) {
+      logger.error(`[XRK-AI] 调度任务失败: ${error.message}`);
     }
   }
 
@@ -380,6 +549,9 @@ export class XRKAIAssistant extends plugin {
       await e.reply('人设和表情包已重新加载');
       return true;
     }
+    else if (msg === '#AI清理任务') {
+      return await this.clearExpiredTasks(e);
+    }
     else if (msg === '#AI工作流列表') {
       return await this.listStreams(e);
     }
@@ -394,6 +566,43 @@ export class XRKAIAssistant extends plugin {
     return false;
   }
 
+  async clearExpiredTasks(e) {
+    try {
+      const tasks = await this.loadTasks();
+      const now = Date.now();
+      let cleared = 0;
+      
+      for (const [id, task] of Object.entries(tasks)) {
+        if (new Date(task.time) < now) {
+          delete tasks[id];
+          
+          // 取消已调度的任务
+          const job = scheduledTasks.get(id);
+          if (job) {
+            job.cancel();
+            scheduledTasks.delete(id);
+          }
+          
+          cleared++;
+        }
+      }
+      
+      await BotUtil.writeFile(TASKS_PATH, YAML.stringify(tasks));
+      
+      const chatStream = this.getStream('chat');
+      const emotionImage = chatStream?.getRandomEmotionImage('开心');
+      if (emotionImage) {
+        await e.reply(segment.image(emotionImage));
+        await BotUtil.sleep(300);
+      }
+      await e.reply(`已清理${cleared}个过期任务`);
+    } catch (error) {
+      logger.error(`[XRK-AI] 清理任务失败: ${error.message}`);
+      await e.reply('清理任务失败');
+    }
+    return true;
+  }
+
   async showHelp(e) {
     const help = `【AI助手管理命令】
 #AI帮助 - 显示此帮助
@@ -404,6 +613,7 @@ export class XRKAIAssistant extends plugin {
 #AI移除全局 [群号] - 移除全局AI
 #AI查看全局 - 查看全局AI列表
 #AI重载人设 - 重新加载人设和表情包
+#AI清理任务 - 清理过期任务
 #AI工作流列表 - 查看工作流
 #AI切换工作流 <名称> - 切换工作流
 #AI状态 - 查看运行状态
@@ -413,7 +623,8 @@ export class XRKAIAssistant extends plugin {
 • 全局AI：在白名单群自动参与聊天
 • 触发概率：${(config.ai?.globalAIChance || 0.05) * 100}%
 • 冷却时间：${config.ai?.globalAICooldown || 300}秒
-• 工作流系统：支持多种AI处理模式`;
+• 工作流系统：支持多种AI处理模式
+• 识图功能：发送图片时自动识别`;
     
     await e.reply(help);
     return true;
@@ -563,6 +774,7 @@ export class XRKAIAssistant extends plugin {
     const status = [
       `【AI助手运行状态】`,
       `• 工作流数量：${streams.length}个`,
+      `• 定时任务：${scheduledTasks.size}个`,
       `• 普通白名单群：${(config.ai?.whitelist?.groups || []).length}个`,
       `• 全局AI群：${(config.ai?.globalWhitelist || []).length}个`,
       `• 触发前缀：${config.ai?.triggerPrefix || '无'}`,
@@ -577,6 +789,10 @@ export class XRKAIAssistant extends plugin {
         .join(' ');
       status.push(`• 表情包：${emotionStats}`);
       status.push(`• 消息缓存：${chatStream.messageHistory.size}个群`);
+    }
+    
+    if (config.ai?.visionModel) {
+      status.push(`• 识图模型：${config.ai.visionModel}`);
     }
     
     await e.reply(status.join('\n'));
